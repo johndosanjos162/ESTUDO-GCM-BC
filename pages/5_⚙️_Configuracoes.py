@@ -1,7 +1,7 @@
 """Configurações e perfil."""
 
 import streamlit as st
-from config import BLOCOS
+from config import DISCIPLINAS
 from core.cycle_manager import obter_ciclo_atual, alternar_ciclo
 from core.auth import logout
 from core.database import obter_perfil
@@ -39,9 +39,9 @@ if st.button("🔀 Alternar ciclo manualmente", use_container_width=True):
 
 st.divider()
 
-st.subheader("📚 Blocos de Estudo")
-for chave, nome in BLOCOS.items():
-    st.write(f"- **{nome}**")
+st.subheader("📚 Disciplinas do edital")
+for chave, nome in DISCIPLINAS.items():
+    st.write(f"- **{nome}** (`{chave}`)")
 
 st.divider()
 
