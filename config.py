@@ -17,9 +17,21 @@ def _get(key: str, default: str = "") -> str:
     return os.getenv(key, default)
 
 
-# ---------- IA (Groq ou OpenAI) ----------
-OPENAI_API_KEY: str = _get("OPENAI_API_KEY")
-OPENAI_MODEL: str = _get("OPENAI_MODEL", "openai/gpt-oss-120b")
+def _get_first(keys: list, default: str = "") -> str:
+    """Tenta várias chaves e retorna a primeira encontrada."""
+    for k in keys:
+        val = _get(k, "")
+        if val:
+            return val
+    return default
+
+
+# ---------- IA (aceita GROQ_API_KEY ou OPENAI_API_KEY) ----------
+OPENAI_API_KEY: str = _get_first(["OPENAI_API_KEY", "GROQ_API_KEY"])
+OPENAI_MODEL: str = _get_first(
+    ["OPENAI_MODEL", "GROQ_MODEL"],
+    default="openai/gpt-oss-120b",
+)
 
 # ---------- Supabase ----------
 SUPABASE_URL: str = _get("SUPABASE_URL")
@@ -66,5 +78,5 @@ def validar_configuracoes() -> list:
     if not SUPABASE_ANON_KEY:
         erros.append("SUPABASE_ANON_KEY")
     if not OPENAI_API_KEY:
-        erros.append("OPENAI_API_KEY")
+        erros.append("OPENAI_API_KEY (ou GROQ_API_KEY)")
     return erros
