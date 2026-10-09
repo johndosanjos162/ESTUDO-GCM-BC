@@ -1,25 +1,16 @@
-"""Prompts especializados por bloco — foco EXCLUSIVO no concurso da GMBC."""
+"""Prompts especializados por bloco — cada matéria gera SOMENTE sua matéria."""
 
-SYSTEM_PROMPT = """Você é um gerador especializado de questões para o concurso
-da GUARDA MUNICIPAL DE BALNEÁRIO CAMBORIÚ (SC).
+SYSTEM_PROMPT = """Você é um gerador de questões de concurso público.
+Gere questões de múltipla escolha (A a E), com apenas 1 alternativa correta.
 
-CONTEXTO DO CONCURSO (use sempre que aplicável):
-- Vagas: 90 novas vagas (quadro passando de 200 para 290)
-- Remuneração inicial: R$ 7.000,00 (podendo chegar a R$ 15.000,00 com progressão)
-- Escolaridade: Ensino Médio completo
-- CNH: Categoria AB obrigatória
-- Idade: 18 a 35 anos incompletos até o fim das inscrições
-- Altura mínima: 1,65m
-- Curso de Formação: mínimo 800 horas-aula (Matriz SENASP)
-- Efetivo atual: 165 guardas em atuação
-
-REGRAS OBRIGATÓRIAS:
-1. Gere questões INÉDITAS de múltipla escolha (A a E).
-2. Cada questão deve ter 5 alternativas e apenas 1 correta.
-3. Foque EXCLUSIVAMENTE em conteúdos exigidos no edital da GMBC.
-4. Use linguagem clara e objetiva, nível de concurso público municipal.
-5. Inclua uma explicação curta e fundamentada (cite a lei ou artigo quando aplicável).
-6. Responda EXCLUSIVAMENTE em JSON válido, sem markdown, no formato:
+REGRAS CRÍTICAS:
+1. Cada questão deve ser EXCLUSIVAMENTE sobre a matéria do bloco solicitado.
+2. NUNCA misture matérias. Se o bloco é Língua Portuguesa, NÃO gere questões
+   sobre Direito, Constituição, Leis ou Administração Pública.
+3. Se o bloco é Matemática, NÃO gere questões sobre leis ou gramática.
+4. Só mencione a Guarda Municipal de Balneário Camboriú como CONTEXTO/EXEMPLO,
+   nunca como conteúdo temático da questão.
+5. Responda EXCLUSIVAMENTE em JSON válido, sem markdown:
 {
   "questoes": [
     {
@@ -35,27 +26,42 @@ REGRAS OBRIGATÓRIAS:
 BLOCOS = {
     "Lingua_Portuguesa": {
         "nome": "🇧🇷 Língua Portuguesa",
-        "descricao": "Interpretação, gramática e redação oficial",
+        "descricao": "Gramática, ortografia, interpretação e redação oficial",
         "prompt": """
-Gere {n} questões de LÍNGUA PORTUGUESA para o concurso da Guarda Municipal
-de Balneário Camboriú (SC).
+Gere {n} questões de LÍNGUA PORTUGUESA.
 
-CONTEXTO OBRIGATÓRIO:
-- Textos de interpretação sobre segurança pública municipal, cidadania,
-  Balneário Camboriú, atribuições da Guarda Municipal.
-- Questões de gramática contextualizadas com o dia a dia da corporação
-  (ofícios, comunicações internas, relatórios).
+⚠️ ATENÇÃO: As questões devem ser sobre GRAMÁTICA, ORTOGRAFIA,
+INTERPRETAÇÃO DE TEXTO ou REDAÇÃO OFICIAL. NÃO gere questões sobre
+Constituição, Leis, Direito Administrativo, Penal ou qualquer outra matéria.
 
-TÓPICOS:
-- Compreensão e interpretação de texto
-- Ortografia oficial
-- Pontuação e acentuação gráfica
+TÓPICOS PERMITIDOS (escolha apenas estes):
+- Ortografia oficial (grafia correta de palavras)
+- Acentuação gráfica
+- Pontuação (vírgula, ponto e vírgula, dois-pontos)
 - Concordância verbal e nominal
 - Regência verbal e nominal
 - Crase
-- Classes de palavras e análise sintática
+- Classes de palavras (substantivo, verbo, adjetivo, advérbio, etc.)
+- Análise sintática (sujeito, predicado, objeto, adjunto)
+- Figuras de linguagem (metáfora, metonímia, pleonasmo, etc.)
 - Semântica (sinônimos, antônimos, homônimos, parônimos)
-- Redação oficial
+- Compreensão e interpretação de texto (perguntas sobre o que o texto diz)
+- Redação oficial (ofícios, memorandos, comunicações)
+
+EXEMPLOS de questões CORRETAS:
+1. "Assinale a alternativa em que todas as palavras estão escritas corretamente:"
+2. "Qual é o sujeito da oração 'Os guardas chegaram cedo'?"
+3. "Em qual alternativa o uso da crase está correto?"
+4. "A palavra 'rapidamente' pertence a qual classe gramatical?"
+
+EXEMPLOS de questões PROIBIDAS:
+❌ "Qual é o princípio constitucional..."
+❌ "Segundo a Lei 3.029/2009..."
+❌ "A Guarda Municipal tem como atribuição..."
+❌ "Conforme o art. 144 da CF..."
+
+Se usar texto de apoio, ele pode mencionar a Guarda Municipal, mas as
+PERGUNTAS devem ser sobre PORTUGUÊS (gramática, interpretação, etc.).
 
 Nível de dificuldade: {dificuldade}.
 """
@@ -63,30 +69,37 @@ Nível de dificuldade: {dificuldade}.
 
     "Matematica_Logica": {
         "nome": "🔢 Matemática e Raciocínio Lógico",
-        "descricao": "Aritmética e lógica aplicadas à segurança pública",
+        "descricao": "Aritmética, porcentagem, geometria e lógica",
         "prompt": """
-Gere {n} questões de MATEMÁTICA E RACIOCÍNIO LÓGICO para o concurso da
-Guarda Municipal de Balneário Camboriú (SC).
+Gere {n} questões de MATEMÁTICA E RACIOCÍNIO LÓGICO.
 
-CONTEXTO OBRIGATÓRIO — contextualize com:
-- Efetivo em escala (165 guardas, escalas 12x36)
-- Distribuição de viaturas por região
-- Orçamento da Secretaria de Segurança
-- Estatísticas de ocorrências
-- Adicional de periculosidade (30%)
-- Cálculo de horas extras
+⚠️ ATENÇÃO: NÃO gere questões sobre leis, direito, português ou
+qualquer outra matéria. Apenas CÁLCULOS e RACIOCÍNIO LÓGICO.
 
-TÓPICOS:
-- Operações com inteiros, fracionários e decimais
-- Porcentagem, razão e proporção
+TÓPICOS PERMITIDOS:
+- Operações básicas (soma, subtração, multiplicação, divisão)
+- Porcentagem
+- Razão e proporção
 - Regra de três simples e composta
 - MMC e MDC
 - Equações de 1º e 2º grau
-- Geometria básica
+- Geometria (área, perímetro, volume)
 - Interpretação de gráficos e tabelas
-- Lógica proposicional
-- Análise combinatória
+- Lógica proposicional (conectivos: E, OU, NÃO, SE...ENTÃO)
+- Análise combinatória (princípio da contagem)
 - Probabilidade básica
+
+Se contextualizar, use situações como: cálculo de efetivo em escala,
+orçamento, horas extras, adicional de periculosidade (30%), distribuição
+de viaturas — mas a QUESTÃO deve ser sobre MATEMÁTICA, não sobre a lei.
+
+EXEMPLO CORRETO:
+"Um guarda recebe R$ 7.000,00 e tem adicional de 30%. Qual é o valor total?"
+(Aqui a matemática é o foco, o contexto é apenas ilustrativo)
+
+EXEMPLO PROIBIDO:
+❌ "Segundo a lei municipal, qual é o adicional de periculosidade?"
+(Isso é Legislação, não Matemática)
 
 Nível de dificuldade: {dificuldade}.
 """
@@ -94,25 +107,26 @@ Nível de dificuldade: {dificuldade}.
 
     "Direito_Penal_Processual": {
         "nome": "⚖️ Direito Penal e Processual Penal",
-        "descricao": "Crimes, flagrante, Maria da Penha e leis especiais",
+        "descricao": "Crimes, flagrante, Maria da Penha e leis penais",
         "prompt": """
-Gere {n} questões de DIREITO PENAL E PROCESSUAL PENAL para o concurso da
-Guarda Municipal de Balneário Camboriú (SC).
+Gere {n} questões de DIREITO PENAL E PROCESSUAL PENAL.
 
-CONTEXTO OBRIGATÓRIO:
-- Foque na atuação PRÁTICA do Guarda Municipal: o que pode e não pode fazer
-- Contextualize com situações reais: abordagem na Praia Central, Avenida Atlântica,
-  Cristo Luz, ocorrências com turistas, Patrulha Maria da Penha (Lei Municipal 4.245/2019)
-
-TÓPICOS:
+TÓPICOS PERMITIDOS (apenas estes):
 - Aplicação da lei penal (legalidade, anterioridade)
-- Crime, fato típico, ilicitude e culpabilidade
-- Crimes contra a pessoa, honra, patrimônio e Administração Pública
-- Prisão em flagrante: tipos e procedimentos (art. 301 a 310 CPP)
+- Conceito de crime, fato típico, ilicitude, culpabilidade
+- Crimes contra a pessoa (homicídio, lesão corporal, ameaça)
+- Crimes contra a honra (calúnia, difamação, injúria)
+- Crimes contra o patrimônio (furto, roubo, extorsão, estelionato)
+- Crimes contra a Administração Pública (peculato, concussão, corrupção)
+- Prisão em flagrante (art. 301 a 310 do CPP)
 - Busca pessoal e domiciliar
 - Lei Maria da Penha (Lei 11.340/2006)
 - Lei de Abuso de Autoridade (Lei 13.869/2019)
 - Estatuto do Desarmamento (Lei 10.826/2003)
+
+⚠️ NÃO gere questões sobre: Constituição em geral, Administração Pública
+(princípios, atos), Português, Matemática ou Conhecimentos Gerais.
+Foque em CRIMES, PENAS e PROCEDIMENTOS PENAIS.
 
 Nível de dificuldade: {dificuldade}.
 """
@@ -125,29 +139,26 @@ Nível de dificuldade: {dificuldade}.
 Gere {n} questões sobre a LEGISLAÇÃO ESPECÍFICA DA GUARDA MUNICIPAL DE
 BALNEÁRIO CAMBORIÚ (SC).
 
-BASE LEGAL OBRIGATÓRIA:
+BASE LEGAL:
 - Lei Municipal 3.029/2009 (Estatuto da Guarda Municipal de BC)
 - Lei Complementar 51/2019 (estrutura organizacional)
 - Lei Federal 13.022/2014 (Estatuto Geral das Guardas Municipais)
-- Constituição Federal, art. 144, § 8º
 
-DADOS CONCRETOS:
-- Requisitos: Ensino Médio, CNH AB, 18 a 35 anos, altura mínima 1,65m
-- Jornada: 40 horas semanais em escala
-- Estrutura: Comando, Subcomando, Corregedoria, Ouvidoria
-- Carreira: Guarda 3ª Classe → 2ª Classe → 1ª Classe → Inspetor
-- Adicional de periculosidade: 30%
-- Corregedor: livre nomeação pelo Prefeito
-
-TÓPICOS:
-- Atribuições e competências da GMBC
-- Estrutura organizacional
+TÓPICOS PERMITIDOS:
+- Atribuições e competências da Guarda Municipal de BC
+- Estrutura organizacional (Comando, Subcomando, Corregedoria, Ouvidoria)
 - Ingresso na carreira e requisitos
-- Jornada, porte de arma, uso da força
+- Jornada de trabalho (40 horas semanais em escala)
+- Porte de arma
 - Regime disciplinar e infrações
 - Direitos, deveres e vantagens
+- Adicional de periculosidade (30%)
 - Progressão funcional
-- Integração com outras forças
+- Carreira (Guarda 3ª Classe, 2ª Classe, 1ª Classe, Inspetor)
+- Integração com outras forças de segurança
+
+⚠️ Foque APENAS na legislação da Guarda Municipal. NÃO gere questões
+genéricas de Direito Constitucional ou Administrativo.
 
 Nível de dificuldade: {dificuldade}.
 """
@@ -155,26 +166,24 @@ Nível de dificuldade: {dificuldade}.
 
     "Direito_Constitucional_Administrativo": {
         "nome": "🏛️ Direito Constitucional e Administrativo",
-        "descricao": "CF/88, princípios e segurança pública municipal",
+        "descricao": "CF/88, princípios e segurança pública",
         "prompt": """
-Gere {n} questões de DIREITO CONSTITUCIONAL E ADMINISTRATIVO para o
-concurso da Guarda Municipal de Balneário Camboriú (SC).
+Gere {n} questões de DIREITO CONSTITUCIONAL E ADMINISTRATIVO.
 
-CONTEXTO OBRIGATÓRIO:
-- Foque no art. 144, § 8º da CF/88 (segurança pública municipal)
-- Aborde a competência do Município para criar Guarda Municipal
-- Relacione com a Lei Orgânica do Município de BC
-
-TÓPICOS:
-- Princípios fundamentais (art. 1º a 4º da CF)
-- Direitos e garantias individuais (art. 5º)
+TÓPICOS PERMITIDOS:
+- Princípios fundamentais (art. 1º a 4º da CF/88)
+- Direitos e garantias individuais (art. 5º da CF/88)
 - Organização do Estado e dos Municípios
-- Administração Pública: LIMPE
+- Administração Pública: LIMPE (Legalidade, Impessoalidade, Moralidade,
+  Publicidade, Eficiência)
 - Poderes administrativos
 - Atos administrativos
 - Responsabilidade civil do Estado
-- Segurança Pública (art. 144 da CF)
+- Segurança Pública (art. 144 da CF/88)
 - Improbidade administrativa (Lei 8.429/1992)
+
+⚠️ NÃO gere questões sobre: crimes específicos, penas, ECA, CTB,
+Legislação da Guarda Municipal, Português ou Matemática.
 
 Nível de dificuldade: {dificuldade}.
 """
@@ -182,17 +191,15 @@ Nível de dificuldade: {dificuldade}.
 
     "Conhecimentos_Balneario_Camboriu": {
         "nome": "🌴 Conhecimentos de Balneário Camboriú",
-        "descricao": "História, geografia, economia e legislação municipal",
+        "descricao": "História, geografia, economia e turismo de BC",
         "prompt": """
-Gere {n} questões sobre o MUNICÍPIO DE BALNEÁRIO CAMBORIÚ (SC) para o
-concurso da Guarda Municipal.
+Gere {n} questões sobre o MUNICÍPIO DE BALNEÁRIO CAMBORIÚ (SC).
 
-DADOS OBRIGATÓRIOS:
+DADOS CONCRETOS:
 - Emancipação: 20/07/1964 (desmembrado de Camboriú)
 - Área: ~46,8 km² (segunda menor de SC)
 - População: ~139.155 habitantes (Censo 2022)
-- Densidade demográfica: ~2.337 hab/km²
-- Economia: turismo (99,21% no setor terciário), construção civil
+- Economia: turismo, construção civil
 - Pontos turísticos: Cristo Luz, Parque Unipraias, Praia Central,
   Avenida Atlântica, Barra Sul, Praia de Laranjeiras, Praia do Estaleiro
 - Rio Camboriú
@@ -200,16 +207,18 @@ DADOS OBRIGATÓRIOS:
 - Distância de Florianópolis: ~80 km
 - Municípios limítrofes: Camboriú, Itajaí, Itapema
 - BR-101: eixo de desenvolvimento
-- Patrulha Maria da Penha: Lei Municipal 4.245/2019
 
-TÓPICOS:
-- História e emancipação
-- Geografia e localização
+TÓPICOS PERMITIDOS:
+- História e emancipação de BC
+- Geografia (localização, área, rio, praias)
 - População e demografia
 - Economia e turismo
-- Pontos turísticos
+- Pontos turísticos e cultura
 - Lei Orgânica do Município
-- Legislação municipal relevante para segurança
+- Legislação municipal relevante
+
+⚠️ NÃO gere questões sobre: direito penal, português, matemática
+ou outras matérias.
 
 Nível de dificuldade: {dificuldade}.
 """
@@ -217,20 +226,11 @@ Nível de dificuldade: {dificuldade}.
 
     "Legislacoes_Especiais": {
         "nome": "📋 Legislações Especiais",
-        "descricao": "ECA, Estatuto do Idoso, CTB, Desarmamento e Maria da Penha",
+        "descricao": "ECA, Estatuto do Idoso, CTB, Desarmamento",
         "prompt": """
-Gere {n} questões sobre LEGISLAÇÕES ESPECIAIS para o concurso da Guarda
-Municipal de Balneário Camboriú (SC).
+Gere {n} questões sobre LEGISLAÇÕES ESPECIAIS.
 
-CONTEXTO OBRIGATÓRIO:
-- Foque na aplicação PRÁTICA pela Guarda Municipal
-- Contextualize com situações de Balneário Camboriú:
-  * Fiscalização de trânsito na Avenida Atlântica
-  * Proteção de crianças e adolescentes no turismo
-  * Atendimento a idosos em vulnerabilidade
-  * Patrulha Maria da Penha (Lei Municipal 4.245/2019)
-
-TÓPICOS:
+TÓPICOS PERMITIDOS:
 - Estatuto da Criança e do Adolescente (Lei 8.069/1990)
 - Estatuto da Pessoa Idosa (Lei 10.741/2003)
 - Código de Trânsito Brasileiro (Lei 9.503/1997)
@@ -239,32 +239,31 @@ TÓPICOS:
 - Lei de Abuso de Autoridade (Lei 13.869/2019)
 - Estatuto Geral das Guardas Municipais (Lei 13.022/2014)
 
+⚠️ NÃO gere questões genéricas de Direito Penal, Constitucional ou
+Português. Foque nas LEIS ESPECIAIS acima.
+
 Nível de dificuldade: {dificuldade}.
 """
     },
 
     "Conhecimentos_Gerais_Atualidades": {
         "nome": "🧠 Conhecimentos Gerais e Atualidades",
-        "descricao": "Segurança pública, cidadania e realidade de BC",
+        "descricao": "Atualidades, segurança pública e cidadania",
         "prompt": """
-Gere {n} questões de CONHECIMENTOS GERAIS E ATUALIDADES para o concurso da
-Guarda Municipal de Balneário Camboriú (SC).
+Gere {n} questões de CONHECIMENTOS GERAIS E ATUALIDADES.
 
-CONTEXTO OBRIGATÓRIO:
-- Priorize atualidades de Balneário Camboriú e Santa Catarina
-- Aborde o Sistema Único de Segurança Pública (SUSP)
-- Contextualize com a realidade de segurança pública municipal
-- Inclua turismo, verticalização e desafios urbanos de BC
-
-TÓPICOS:
+TÓPICOS PERMITIDOS:
 - Segurança pública no Brasil (SUSP, SENASP)
 - Direitos humanos e cidadania
-- Atualidades de segurança pública (últimos 2 anos)
+- Atualidades (últimos 2 anos)
 - Meio ambiente e sustentabilidade
 - Noções de informática básica
 - Ética no serviço público
 - Geografia e história de Santa Catarina
 - Atualidades de Balneário Camboriú e região
+
+⚠️ NÃO gere questões de gramática, matemática, direito específico
+ou legislação da Guarda Municipal.
 
 Nível de dificuldade: {dificuldade}.
 """
