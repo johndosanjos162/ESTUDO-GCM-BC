@@ -19,14 +19,14 @@ if not user:
 st.title("📄 Caderno de Questões em PDF")
 st.caption(
     "Escolha quantas questões quer de cada bloco. "
-    "O PDF sai com alternativas de A a E e gabarito no final."
+    "O PDF sai com alternativas de A a E e gabarito no final. "
+    "Questões repetidas são automaticamente bloqueadas."
 )
 
 # ============================================================
 # SESSÃO: quantidades por bloco
 # ============================================================
 if "qtd_por_bloco" not in st.session_state:
-    # valor inicial = 0 para todos
     st.session_state.qtd_por_bloco = {k: 0 for k in BLOCOS.keys()}
 
 if "incluir_bloco" not in st.session_state:
@@ -99,7 +99,6 @@ with st.sidebar:
 st.subheader("🎯 Escolha a quantidade por bloco")
 st.caption("Marque os blocos que deseja incluir e defina quantas questões de cada um.")
 
-# Cabeçalho visual
 cab1, cab2, cab3 = st.columns([3, 1, 1])
 with cab1:
     st.markdown("**Bloco**")
@@ -110,7 +109,6 @@ with cab3:
 
 st.markdown("---")
 
-# Uma linha por bloco
 for chave, nome in BLOCOS.items():
     col1, col2, col3 = st.columns([3, 1, 1])
 
@@ -140,6 +138,7 @@ for chave, nome in BLOCOS.items():
         st.session_state.qtd_por_bloco[chave] = qtd
 
 st.markdown("---")
+
 
 # ============================================================
 # RESUMO DO QUE SERÁ GERADO
@@ -171,6 +170,7 @@ else:
 
 st.divider()
 
+
 # ============================================================
 # BOTÃO GERAR PDF
 # ============================================================
@@ -183,6 +183,7 @@ if st.button(
     prog = st.progress(0, text="Iniciando geração...")
     questoes_por_bloco = {}
     erros = []
+    avisos = []
 
     total_blocos = len(blocos_selecionados)
 
@@ -194,21 +195,57 @@ if st.button(
         )
         try:
             qs = gerar_questoes(chave, qtd, dificuldade)
+
             if qs:
                 questoes_por_bloco[nome_bloco] = qs
+
+                # ⚠️ Aviso: gerou menos que o pedido (questões inéditas esgotadas)
+                if len(qs) < qtd:
+                    faltam = qtd - len(qs)
+                    avisos.append(
+                        f"**{nome_bloco}**: você pediu **{qtd}** questões, "
+                        f"mas a IA só conseguiu gerar **{len(qs)}** inéditas. "
+                        f"**{faltam}** não puderam ser criadas porque o banco "
+                        f"de questões inéditas desse bloco está se esgotando."
+                    )
             else:
-                erros.append(f"{nome_bloco}: nenhuma questão retornada")
+                erros.append(
+                    f"**{nome_bloco}**: nenhuma questão inédita foi gerada. "
+                    f"Todas as questões possíveis desse bloco já estão no banco."
+                )
         except Exception as e:
-            erros.append(f"{nome_bloco}: {e}")
+            erros.append(f"**{nome_bloco}**: {e}")
 
     prog.progress(1.0, text="Montando o PDF...")
 
-    if erros:
-        for e in erros:
-            st.error(f"⚠️ {e}")
+    # -----------------------------------------------------------
+    # AVISOS DE ESCASSEZ (amigável — não é erro)
+    # -----------------------------------------------------------
+    if avisos:
+        st.warning("⚠️ Alguns blocos geraram menos questões que o solicitado:")
+        for a in avisos:
+            st.markdown(f"- {a}")
+        st.info(
+            "💡 **O que fazer?**\n\n"
+            "- Reduza a quantidade pedida para o bloco afetado;\n"
+            "- Tente novamente mais tarde (a IA pode encontrar novos ângulos);\n"
+            "- Aumente a temperatura em `ai/generator.py` (de 0.95 para 1.0);\n"
+            "- Limpe o banco de questões em **📊 Histórico → Apagar** e recomece."
+        )
 
+    # -----------------------------------------------------------
+    # ERROS (nada foi gerado no bloco)
+    # -----------------------------------------------------------
+    if erros:
+        st.error("❌ Não foi possível gerar questões em alguns blocos:")
+        for e in erros:
+            st.markdown(f"- {e}")
+
+    # -----------------------------------------------------------
+    # MONTA O PDF (se houver pelo menos 1 questão)
+    # -----------------------------------------------------------
     if not questoes_por_bloco:
-        st.error("Nenhuma questão foi gerada. Tente novamente.")
+        st.error("Nenhuma questão foi gerada. Ajuste os blocos e tente novamente.")
         prog.empty()
     else:
         try:
@@ -223,8 +260,15 @@ if st.button(
                 f"caderno_gmbc_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
             )
             prog.empty()
+
             total_real = sum(len(q) for q in questoes_por_bloco.values())
-            st.success(f"✅ Caderno gerado com {total_real} questões!")
+            if total_real < total_questoes:
+                st.success(
+                    f"✅ Caderno gerado com **{total_real}** de "
+                    f"**{total_questoes}** questões solicitadas."
+                )
+            else:
+                st.success(f"✅ Caderno gerado com **{total_real}** questões!")
         except Exception as e:
             st.error(f"Erro ao montar o PDF: {e}")
             prog.empty()
