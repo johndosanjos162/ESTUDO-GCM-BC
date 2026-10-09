@@ -248,22 +248,40 @@ Nível de dificuldade: {dificuldade}.
 
     "Conhecimentos_Gerais_Atualidades": {
         "nome": "🧠 Conhecimentos Gerais e Atualidades",
-        "descricao": "Atualidades, segurança pública e cidadania",
+        "descricao": "Segurança pública, cidadania e temas gerais",
         "prompt": """
-Gere {n} questões de CONHECIMENTOS GERAIS E ATUALIDADES.
+Gere {n} questões de CONHECIMENTOS GERAIS sobre temas ATEMPORAIS
+(que não mudam com o tempo).
 
-TÓPICOS PERMITIDOS:
-- Segurança pública no Brasil (SUSP, SENASP)
-- Direitos humanos e cidadania
-- Atualidades (últimos 2 anos)
-- Meio ambiente e sustentabilidade
-- Noções de informática básica
-- Ética no serviço público
-- Geografia e história de Santa Catarina
-- Atualidades de Balneário Camboriú e região
+⚠️ IMPORTANTE: NÃO gere questões sobre notícias recentes, eventos do ano
+atual ou fatos que exigem conhecimento de data específica. Foque em
+conceitos que permanecem válidos independentemente do ano.
 
-⚠️ NÃO gere questões de gramática, matemática, direito específico
-ou legislação da Guarda Municipal.
+TÓPICOS PERMITIDOS (escolha apenas estes):
+- Conceito de cidadania e direitos do cidadão
+- Direitos humanos fundamentais (conceito geral)
+- Noções básicas de segurança pública (o que é, para que serve)
+- Sistema Único de Segurança Pública (SUSP) — conceito e finalidade
+- SENASP — o que é e o que faz
+- Noções básicas de informática (hardware, software, internet, e-mail)
+- Ética no serviço público (conceito)
+- Meio ambiente e sustentabilidade (conceito geral)
+- Geografia geral do Brasil (regiões, estados, capitais)
+- História geral do Brasil (períodos: colônia, império, república)
+- Geografia e história de Santa Catarina (colonização, cidades principais)
+
+EXEMPLOS CORRETOS:
+1. "O que é cidadania?"
+2. "Qual é a função principal do Sistema Único de Segurança Pública (SUSP)?"
+3. "Quantas regiões tem o Brasil?"
+4. "Em que período histórico o Brasil foi colônia de Portugal?"
+5. "O que significa o princípio da ética no serviço público?"
+
+EXEMPLOS PROIBIDOS:
+❌ "Qual foi a notícia mais importante de 2026?"
+❌ "Quem é o atual prefeito de..."
+❌ "Qual evento ocorreu no mês passado?"
+❌ Qualquer questão que dependa de saber o ano atual.
 
 Nível de dificuldade: {dificuldade}.
 """
