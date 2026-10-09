@@ -2,7 +2,7 @@
 
 import streamlit as st
 import pandas as pd
-from config import DISCIPLINAS
+from config import BLOCOS
 from core.database import buscar_historico_usuario, estatisticas_por_disciplina
 from utils.helpers import inicializar_session_state, formatar_data
 
@@ -18,10 +18,10 @@ st.title("📊 Histórico e Desempenho")
 stats = estatisticas_por_disciplina(user.id)
 
 if stats:
-    st.subheader("Resumo por disciplina")
+    st.subheader("Resumo por bloco")
     cols = st.columns(min(len(stats), 4))
     for i, s in enumerate(stats):
-        nome = DISCIPLINAS.get(s["disciplina"], s["disciplina"])
+        nome = BLOCOS.get(s["disciplina"], s["disciplina"])
         total = int(s.get("total", 0))
         acertos = int(s.get("acertos", 0))
         pct = round((acertos / total) * 100, 1) if total else 0
@@ -31,14 +31,14 @@ if stats:
 st.divider()
 
 filtro = st.selectbox(
-    "Filtrar por disciplina",
-    options=["Todas"] + list(DISCIPLINAS.keys()),
-    format_func=lambda x: "Todas" if x == "Todas" else DISCIPLINAS[x],
+    "Filtrar por bloco",
+    options=["Todos"] + list(BLOCOS.keys()),
+    format_func=lambda x: "Todos" if x == "Todos" else BLOCOS[x],
 )
 
 historico = buscar_historico_usuario(
     user.id,
-    disciplina=None if filtro == "Todas" else filtro,
+    disciplina=None if filtro == "Todos" else filtro,
     limite=200,
 )
 
@@ -47,15 +47,15 @@ if not historico:
     st.stop()
 
 df = pd.DataFrame(historico)
-df["Disciplina"] = df["disciplina"].map(lambda d: DISCIPLINAS.get(d, d))
+df["Bloco"] = df["disciplina"].map(lambda d: BLOCOS.get(d, d))
 df["Data"] = df["respondido_em"].map(formatar_data)
 df["Acertou"] = df["acertou"].map({True: "✅", False: "❌"})
 
-df_show = df[["Data", "Disciplina", "resposta_usuario", "resposta_correta", "Acertou"]]
-df_show.columns = ["Data", "Disciplina", "Sua resposta", "Correta", "Resultado"]
+df_show = df[["Data", "Bloco", "resposta_usuario", "resposta_correta", "Acertou"]]
+df_show.columns = ["Data", "Bloco", "Sua resposta", "Correta", "Resultado"]
 
 st.dataframe(df_show, use_container_width=True, hide_index=True)
 
-st.subheader("Acertos por disciplina")
-acertos_por_disc = df.groupby("Disciplina")["acertou"].mean().mul(100).round(1).sort_values()
-st.bar_chart(acertos_por_disc)
+st.subheader("Acertos por bloco")
+acertos_por_bloco = df.groupby("Bloco")["acertou"].mean().mul(100).round(1).sort_values()
+st.bar_chart(acertos_por_bloco)
