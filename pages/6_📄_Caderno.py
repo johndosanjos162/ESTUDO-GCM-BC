@@ -17,13 +17,22 @@ if not user:
     st.stop()
 
 st.title("📄 Caderno de Questões em PDF")
-st.caption("Escolha quantas questões quer de cada bloco. IA gera questões inéditas com foco na GMBC.")
+st.caption(
+    "Escolha quantas questões quer de cada bloco. "
+    "A IA gera questões inéditas com foco na Guarda Municipal de Balneário Camboriú."
+)
 
+# ============================================================
+# SESSÃO: quantidades por bloco
+# ============================================================
 if "qtd_por_bloco" not in st.session_state:
     st.session_state.qtd_por_bloco = {k: 0 for k in BLOCOS.keys()}
 if "incluir_bloco" not in st.session_state:
     st.session_state.incluir_bloco = {k: False for k in BLOCOS.keys()}
 
+# ============================================================
+# SIDEBAR
+# ============================================================
 with st.sidebar:
     st.subheader("⚙️ Configurações")
 
@@ -31,12 +40,16 @@ with st.sidebar:
         "Dificuldade",
         options=["facil", "medio", "dificil"],
         index=1,
-        format_func=lambda x: {"facil": "Fácil", "medio": "Médio", "dificil": "Difícil"}[x],
+        format_func=lambda x: {
+            "facil": "Fácil", "medio": "Médio", "dificil": "Difícil"
+        }[x],
     )
 
     st.divider()
+
     incluir_gabarito = st.checkbox("Incluir gabarito no final", value=True)
     incluir_explicacao = st.checkbox("Incluir explicações no gabarito", value=False)
+
     st.divider()
 
     titulo_caderno = st.text_input(
@@ -64,7 +77,11 @@ with st.sidebar:
             st.session_state.qtd_por_bloco[k] = 0
         st.rerun()
 
+# ============================================================
+# TABELA DE SELEÇÃO
+# ============================================================
 st.subheader("🎯 Escolha a quantidade por bloco")
+st.caption("Marque os blocos que deseja incluir e defina quantas questões de cada um.")
 
 h1, h2, h3 = st.columns([3, 1, 1])
 with h1:
@@ -78,8 +95,10 @@ st.markdown("---")
 
 for chave, nome in BLOCOS.items():
     c1, c2, c3 = st.columns([3, 1, 1])
+
     with c1:
         st.markdown(f"**{nome}**")
+
     with c2:
         inc = st.checkbox(
             "Incluir",
@@ -88,10 +107,12 @@ for chave, nome in BLOCOS.items():
             label_visibility="collapsed",
         )
         st.session_state.incluir_bloco[chave] = inc
+
     with c3:
         q = st.number_input(
             "Qtd",
-            min_value=0, max_value=50,
+            min_value=0,
+            max_value=50,
             value=st.session_state.qtd_por_bloco[chave],
             step=1,
             key=f"num_{chave}",
@@ -102,6 +123,9 @@ for chave, nome in BLOCOS.items():
 
 st.markdown("---")
 
+# ============================================================
+# RESUMO
+# ============================================================
 selecionados = {
     k: st.session_state.qtd_por_bloco[k]
     for k in BLOCOS
@@ -109,7 +133,7 @@ selecionados = {
 }
 total = sum(selecionados.values())
 
-st.subheader("📋 Resumo")
+st.subheader("📋 Resumo do caderno")
 
 if not selecionados:
     st.warning("⚠️ Selecione ao menos um bloco com quantidade maior que zero.")
@@ -118,13 +142,22 @@ else:
     c1.metric("Blocos", len(selecionados))
     c2.metric("Questões", total)
     c3.metric("Estimativa", f"~{max(1, len(selecionados))} min")
-    with st.expander("📖 Distribuição", expanded=True):
+
+    with st.expander("📖 Ver distribuição", expanded=True):
         for k, q in selecionados.items():
             st.write(f"- **{BLOCOS[k]}**: {q} questão(ões)")
 
 st.divider()
 
-if st.button("🎯 Gerar Caderno PDF", use_container_width=True, type="primary", disabled=not selecionados):
+# ============================================================
+# BOTÃO GERAR PDF
+# ============================================================
+if st.button(
+    "🎯 Gerar Caderno PDF",
+    use_container_width=True,
+    type="primary",
+    disabled=not selecionados,
+):
     prog = st.progress(0, text="Iniciando geração...")
     questoes_por_bloco = {}
     erros = []
@@ -134,7 +167,10 @@ if st.button("🎯 Gerar Caderno PDF", use_container_width=True, type="primary",
 
     for i, (chave, qtd) in enumerate(selecionados.items()):
         nome_bloco = BLOCOS[chave]
-        prog.progress(i / total_blocos, text=f"Gerando {qtd} questões de {nome_bloco}...")
+        prog.progress(
+            i / total_blocos,
+            text=f"Gerando {qtd} questões de {nome_bloco}..."
+        )
         try:
             qs = gerar_questoes(chave, qtd, dificuldade)
             if qs:
@@ -142,34 +178,38 @@ if st.button("🎯 Gerar Caderno PDF", use_container_width=True, type="primary",
                 if len(qs) < qtd:
                     faltam = qtd - len(qs)
                     avisos.append(
-                        f"**{nome_bloco}**: você pediu **{qtd}** questões, mas a IA gerou **{len(qs)}** inéditas. "
-                        f"**{faltam}** não puderam ser criadas porque o banco de questões inéditas está se esgotando."
+                        f"**{nome_bloco}**: pedidas {qtd}, geradas {len(qs)} "
+                        f"({faltam} não vieram da IA — tente novamente)"
                     )
             else:
                 erros.append(
-                    f"**{nome_bloco}**: nenhuma questão inédita foi gerada."
+                    f"**{nome_bloco}**: a IA não conseguiu gerar questões. "
+                    f"Tente novamente ou reduza a quantidade."
                 )
         except Exception as e:
             erros.append(f"**{nome_bloco}**: {e}")
 
     prog.progress(1.0, text="Montando o PDF...")
 
+    # ---------- AVISOS ----------
     if avisos:
         st.warning("⚠️ Alguns blocos geraram menos questões que o solicitado:")
         for a in avisos:
             st.markdown(f"- {a}")
         st.info(
             "💡 **O que fazer?**\n\n"
+            "- Clique em **Gerar novamente** (a IA pode completar);\n"
             "- Reduza a quantidade pedida para o bloco afetado;\n"
-            "- Tente novamente mais tarde (a IA pode encontrar novos ângulos);\n"
-            "- Limpe o banco em **📊 Histórico → Apagar** e recomece."
+            "- Verifique os logs se o problema persistir."
         )
 
+    # ---------- ERROS ----------
     if erros:
         st.error("❌ Não foi possível gerar questões em alguns blocos:")
         for e in erros:
             st.markdown(f"- {e}")
 
+    # ---------- MONTA O PDF ----------
     if not questoes_por_bloco:
         st.error("Nenhuma questão foi gerada. Ajuste os blocos e tente novamente.")
         prog.empty()
@@ -189,30 +229,39 @@ if st.button("🎯 Gerar Caderno PDF", use_container_width=True, type="primary",
 
             total_real = sum(len(q) for q in questoes_por_bloco.values())
             if total_real < total:
-                st.success(f"✅ Caderno gerado com **{total_real}** de **{total}** questões solicitadas.")
+                st.success(
+                    f"✅ Caderno gerado com **{total_real}** de "
+                    f"**{total}** questões solicitadas."
+                )
             else:
                 st.success(f"✅ Caderno gerado com **{total_real}** questões!")
         except Exception as e:
             st.error(f"Erro ao montar PDF: {e}")
             prog.empty()
 
+# ============================================================
+# DOWNLOAD
+# ============================================================
 if "pdf_caderno_bytes" in st.session_state:
     st.divider()
     st.subheader("📥 Download")
-    kb = len(st.session_state["pdf_caderno_bytes"]) / 1024
-    st.caption(f"Tamanho: **{kb:.0f} KB**")
 
-    col1, col2 = st.columns([3, 1])
-    with col1:
+    kb = len(st.session_state["pdf_caderno_bytes"]) / 1024
+    st.caption(f"Tamanho do arquivo: **{kb:.0f} KB**")
+
+    col_dl1, col_dl2 = st.columns([3, 1])
+
+    with col_dl1:
         st.download_button(
             label="⬇️ Baixar Caderno PDF",
             data=st.session_state["pdf_caderno_bytes"],
-            file_name=st.session_state.get("pdf_caderno_nome", "caderno.pdf"),
+            file_name=st.session_state.get("pdf_caderno_nome", "caderno_gmbc.pdf"),
             mime="application/pdf",
             use_container_width=True,
             type="primary",
         )
-    with col2:
+
+    with col_dl2:
         if st.button("🗑️ Limpar", use_container_width=True):
             st.session_state.pop("pdf_caderno_bytes", None)
             st.session_state.pop("pdf_caderno_nome", None)
