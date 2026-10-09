@@ -1,4 +1,4 @@
-"""Sessão de estudo com geração de questões por IA."""
+"""Sessão de estudo — visual tecnológico."""
 
 import streamlit as st
 from config import BLOCOS
@@ -15,11 +15,25 @@ if not user:
     st.switch_page("pages/0_🔐_Login.py")
     st.stop()
 
-st.title("📝 Sessão de Estudo — Guarda Municipal BC")
+# ============================================================
+# CABEÇALHO VISUAL
+# ============================================================
+st.markdown("""
+<div style="margin-bottom: 25px;">
+    <div class="tech-badge">MODO ESTUDO</div>
+    <h1 style="margin: 8px 0 0 0; border: none; padding: 0;">📝 Sessão de Estudo</h1>
+    <p style="color: #8fb8cc; font-size: 13px; letter-spacing: 1px;">
+        Questões geradas por IA • Foco na Guarda Municipal BC
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 ciclo = obter_ciclo_atual(user.id)
 blocos_disponiveis = listar_blocos()
 
+# ============================================================
+# SIDEBAR — CONFIGURAÇÃO (FUNÇÕES ORIGINAIS INTACTAS)
+# ============================================================
 with st.sidebar:
     st.subheader("📚 Blocos de Estudo")
 
@@ -46,7 +60,10 @@ with st.sidebar:
 
     quantidade = st.slider("Quantidade de questões", 1, 15, 5)
 
-if st.button("🔄 Gerar novas questões", use_container_width=True):
+# ============================================================
+# BOTÃO GERAR (FUNÇÃO ORIGINAL INTACTA)
+# ============================================================
+if st.button("🔄 Gerar novas questões", use_container_width=True, type="primary"):
     with st.spinner(f"Gerando {quantidade} questões com IA..."):
         try:
             questoes = gerar_questoes(bloco_escolhido, quantidade, dificuldade)
@@ -60,10 +77,16 @@ if st.button("🔄 Gerar novas questões", use_container_width=True):
 questoes = st.session_state.get("questoes_sessao", [])
 idx = st.session_state.get("indice_atual", 0)
 
+# ============================================================
+# TELA INICIAL
+# ============================================================
 if not questoes:
     st.info("👈 Selecione um bloco e clique em **Gerar novas questões**.")
     st.stop()
 
+# ============================================================
+# SESSÃO CONCLUÍDA (LÓGICA ORIGINAL INTACTA)
+# ============================================================
 if idx >= len(questoes):
     st.success("🎉 Sessão concluída!")
     respostas = st.session_state.get("respostas_sessao", [])
@@ -83,6 +106,9 @@ if idx >= len(questoes):
         st.rerun()
     st.stop()
 
+# ============================================================
+# QUESTÃO ATUAL (LÓGICA ORIGINAL INTACTA)
+# ============================================================
 q = questoes[idx]
 alternativas = parse_alternativas(q["alternativas"])
 
@@ -103,7 +129,7 @@ resposta = st.radio(
 
 col1, col2 = st.columns([1, 1])
 with col1:
-    confirmar = st.button("✅ Confirmar resposta", use_container_width=True)
+    confirmar = st.button("✅ Confirmar resposta", use_container_width=True, type="primary")
 with col2:
     pular = st.button("⏭️ Pular questão", use_container_width=True)
 
