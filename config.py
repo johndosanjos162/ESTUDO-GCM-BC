@@ -17,7 +17,7 @@ def _get(key: str, default: str = "") -> str:
     return os.getenv(key, default)
 
 
-# ---------- IA (Groq ou OpenAI — detecção automática) ----------
+# ---------- IA (Groq ou OpenAI) ----------
 OPENAI_API_KEY: str = _get("OPENAI_API_KEY")
 OPENAI_MODEL: str = _get("OPENAI_MODEL", "openai/gpt-oss-120b")
 
@@ -30,7 +30,7 @@ APP_TITLE = "Estudos GM Balneário Camboriú"
 APP_ICON = "📚"
 APP_LAYOUT = "wide"
 
-# ---------- Blocos de Estudo (8 blocos) ----------
+# ---------- Blocos de Estudo ----------
 BLOCOS = {
     "Lingua_Portuguesa": "🇧🇷 Língua Portuguesa",
     "Matematica_Logica": "🔢 Matemática e Raciocínio Lógico",
@@ -42,7 +42,7 @@ BLOCOS = {
     "Conhecimentos_Gerais_Atualidades": "🧠 Conhecimentos Gerais e Atualidades",
 }
 
-# Alias para compatibilidade com código legado
+# Alias para compatibilidade
 DISCIPLINAS = BLOCOS
 
 # ---------- Ciclos semanais ----------
@@ -60,7 +60,6 @@ CICLO_B = [
 
 
 def validar_configuracoes() -> list:
-    """Retorna lista de variáveis faltantes."""
     erros = []
     if not SUPABASE_URL:
         erros.append("SUPABASE_URL")
