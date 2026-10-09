@@ -67,14 +67,3 @@ if historico:
         st.write(f"{icone} **{nome}** — sua resposta: {r['resposta_usuario']} | correta: {r['resposta_correta']}")
 else:
     st.caption("Sem respostas recentes.")
-
-from core.database import contar_questoes_por_disciplina
-from config import BLOCOS
-
-st.subheader("📚 Banco de questões por bloco")
-for chave, nome in BLOCOS.items():
-    try:
-        total = contar_questoes_por_disciplina(chave)
-        st.write(f"- **{nome}**: {total} questões no banco")
-    except Exception:
-        st.write(f"- **{nome}**: indisponível")
