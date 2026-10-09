@@ -1,10 +1,10 @@
 """Sessão de estudo com geração de questões por IA."""
 
 import streamlit as st
-from config import DISCIPLINAS
+from config import BLOCOS
 from core.cycle_manager import obter_ciclo_atual
 from core.database import salvar_resposta
-from ai.generator import gerar_questoes
+from ai.generator import gerar_questoes, listar_blocos
 from ai.evaluator import avaliar_resposta
 from utils.helpers import inicializar_session_state, parse_alternativas
 
@@ -15,28 +15,41 @@ if not user:
     st.switch_page("pages/0_🔐_Login.py")
     st.stop()
 
-st.title("📝 Sessão de Estudo")
+st.title("📝 Sessão de Estudo — Guarda Municipal BC")
 
 ciclo = obter_ciclo_atual(user.id)
+blocos_disponiveis = listar_blocos()
 
 with st.sidebar:
-    st.subheader("⚙️ Configuração")
-    modo_livre = st.toggle("Modo livre (todas as disciplinas)", value=False)
-    opcoes = list(DISCIPLINAS.keys()) if modo_livre else ciclo["disciplinas"]
+    st.subheader("📚 Blocos de Estudo")
 
-    disciplina = st.selectbox("Disciplina", options=opcoes, format_func=lambda x: DISCIPLINAS[x])
+    modo_livre = st.toggle("Ver todos os blocos", value=False)
+    opcoes = list(blocos_disponiveis.keys()) if modo_livre else ciclo["disciplinas"]
+
+    bloco_escolhido = st.selectbox(
+        "Selecione o bloco:",
+        options=opcoes,
+        format_func=lambda x: blocos_disponiveis[x]["nome"],
+        key="bloco_selector",
+    )
+
+    st.caption(blocos_disponiveis[bloco_escolhido]["descricao"])
+
+    st.divider()
+
     dificuldade = st.select_slider(
         "Dificuldade",
         options=["facil", "medio", "dificil"],
         value="medio",
         format_func=lambda x: {"facil": "Fácil", "medio": "Médio", "dificil": "Difícil"}[x],
     )
-    quantidade = st.slider("Quantidade", 1, 10, 5)
+
+    quantidade = st.slider("Quantidade de questões", 1, 15, 5)
 
 if st.button("🔄 Gerar novas questões", use_container_width=True):
-    with st.spinner("Consultando a IA e gerando questões inéditas..."):
+    with st.spinner(f"Gerando {quantidade} questões com IA..."):
         try:
-            questoes = gerar_questoes(disciplina, quantidade, dificuldade)
+            questoes = gerar_questoes(bloco_escolhido, quantidade, dificuldade)
             st.session_state.questoes_sessao = questoes
             st.session_state.indice_atual = 0
             st.session_state.respostas_sessao = []
@@ -48,14 +61,21 @@ questoes = st.session_state.get("questoes_sessao", [])
 idx = st.session_state.get("indice_atual", 0)
 
 if not questoes:
-    st.info("Clique em **Gerar novas questões** para começar.")
+    st.info("👈 Selecione um bloco e clique em **Gerar novas questões**.")
     st.stop()
 
 if idx >= len(questoes):
     st.success("🎉 Sessão concluída!")
     respostas = st.session_state.get("respostas_sessao", [])
     acertos = sum(1 for r in respostas if r["acertou"])
-    st.metric("Acertos", f"{acertos}/{len(respostas)}")
+    total = len(respostas)
+    pct = round((acertos / total) * 100, 1) if total else 0
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Acertos", f"{acertos}/{total}")
+    col2.metric("Aproveitamento", f"{pct}%")
+    col3.metric("Bloco", blocos_disponiveis[bloco_escolhido]["nome"].split(" ", 1)[1])
+
     if st.button("🔁 Nova sessão"):
         st.session_state.questoes_sessao = []
         st.session_state.indice_atual = 0
@@ -66,8 +86,9 @@ if idx >= len(questoes):
 q = questoes[idx]
 alternativas = parse_alternativas(q["alternativas"])
 
+nome_bloco = blocos_disponiveis.get(q["disciplina"], {}).get("nome", q["disciplina"])
 st.markdown(f"### Questão {idx + 1} de {len(questoes)}")
-st.caption(f"Disciplina: **{DISCIPLINAS.get(q['disciplina'], q['disciplina'])}** | Dificuldade: {q.get('dificuldade', 'medio')}")
+st.caption(f"**{nome_bloco}** | Dificuldade: {q.get('dificuldade', 'medio')}")
 st.write(q["enunciado"])
 
 letras = [chr(65 + i) for i in range(len(alternativas))]
@@ -92,7 +113,6 @@ if pular:
 
 if confirmar:
     resultado = avaliar_resposta(q, resposta)
-
     try:
         salvar_resposta({
             "usuario_id": user.id,
