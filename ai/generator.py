@@ -17,7 +17,7 @@ def _get_client() -> OpenAI:
     if _client is None:
         if not OPENAI_API_KEY:
             raise RuntimeError("OPENAI_API_KEY não configurada.")
-        _client = OpenAI(api_key=OPENAI_API_KEY)
+        _client = OpenAI(api_key=openai/gpt-oss-120b)
     return _client
 
 
