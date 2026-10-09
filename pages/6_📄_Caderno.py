@@ -9,15 +9,6 @@ from ai.generator import gerar_questoes
 from utils.pdf_generator import gerar_caderno_pdf
 from utils.helpers import inicializar_session_state
 
-# ---- DEBUG TEMPORÁRIO ----
-from config import OPENAI_API_KEY, OPENAI_MODEL
-st.write("### 🔍 DEBUG")
-st.write(f"- Chave detectada: `{OPENAI_API_KEY[:10]}...`" if OPENAI_API_KEY else "- ❌ **Chave VAZIA**")
-st.write(f"- Modelo: `{OPENAI_MODEL}`")
-st.write(f"- Provedor: `{'Groq' if OPENAI_API_KEY.startswith('gsk_') else 'OpenAI' if OPENAI_API_KEY.startswith('sk-') else 'DESCONHECIDO'}`")
-st.write(f"- Chaves disponíveis nos Secrets: `{list(st.secrets.keys())}`")
-# --------------------------
-
 inicializar_session_state()
 
 user = st.session_state.get("user")
