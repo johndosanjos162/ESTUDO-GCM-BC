@@ -1,38 +1,41 @@
-# ai/generator.py
-"""Geração de questões inéditas via Groq (gratuito)."""
+"""Geração de questões via IA — com detecção automática de Groq/OpenAI."""
 
 from __future__ import annotations
 import hashlib
 import json
+from typing import Optional
 
 from openai import OpenAI
-# from config import OPENAI_API_KEY, OPENAI_MODEL # ajuste os imports conforme config.py
-
-# Substitua a linha de criação do cliente
-# _client = OpenAI(api_key=OPENAI_API_KEY)
-# Por esta:
-_client = OpenAI(
-    api_key=OPENAI_API_KEY, # que agora contém a chave do Groq
-    base_url="https://api.groq.com/openai/v1" # URL base da API do Groq
+from config import OPENAI_API_KEY, OPENAI_MODEL
+from ai.prompts import SYSTEM_PROMPT, BLOCOS
+from core.database import (
+    salvar_questao,
+    questao_ja_existe,
+    buscar_enunciados_existentes,
 )
 
-from config import GROQ_API_KEY, GROQ_MODEL
-from ai.prompts import SYSTEM_PROMPT, PROMPTS_DISCIPLINAS
-from core.database import salvar_questao, questao_ja_existe
+_client: Optional[OpenAI] = None
 
-_client = None
+MAX_ENUNCIADOS_NO_PROMPT = 150
+MAX_TENTATIVAS = 3
 
 
 def _get_client() -> OpenAI:
-    """Cliente apontando para a API do Groq (compatível com OpenAI SDK)."""
+    """Cria cliente detectando automaticamente Groq ou OpenAI pela chave."""
     global _client
     if _client is None:
-        if not GROQ_API_KEY:
-            raise RuntimeError("GROQ_API_KEY não configurada nos Secrets.")
-        _client = OpenAI(
-            api_key=GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1",
-        )
+        if not OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY não configurada.")
+
+        if OPENAI_API_KEY.startswith("gsk_"):
+            # Chave do Groq → endpoint do Groq
+            _client = OpenAI(
+                api_key=OPENAI_API_KEY,
+                base_url="https://api.groq.com/openai/v1",
+            )
+        else:
+            # Chave da OpenAI (sk-...)
+            _client = OpenAI(api_key=OPENAI_API_KEY)
     return _client
 
 
@@ -40,76 +43,166 @@ def _hash(texto: str) -> str:
     return hashlib.sha256(texto.strip().encode("utf-8")).hexdigest()
 
 
-def gerar_questoes(
-    disciplina: str,
-    quantidade: int = 5,
-    dificuldade: str = "medio",
-    salvar: bool = True,
-) -> list:
-    template = PROMPTS_DISCIPLINAS.get(disciplina)
-    if not template:
-        raise ValueError(f"Disciplina inválida: {disciplina}")
+def listar_blocos() -> dict:
+    return BLOCOS
 
-    user_prompt = template.format(n=quantidade, dificuldade=dificuldade)
 
+def _montar_prompt(bloco, quantidade, dificuldade, enunciados_existentes):
+    info = BLOCOS.get(bloco)
+    if not info:
+        raise ValueError(f"Bloco inválido: {bloco}")
+
+    prompt_base = info["prompt"].format(n=quantidade, dificuldade=dificuldade)
+
+    prompt_base += """
+
+============================================================
+REFORÇO OBRIGATÓRIO DE FOCO:
+Todas as questões devem ser EXCLUSIVAMENTE sobre o concurso
+da Guarda Municipal de Balneário Camboriú (SC).
+- NÃO gere questões genéricas de outras áreas.
+- Contextualize com situações, leis e dados do município.
+============================================================
+"""
+
+    if enunciados_existentes:
+        lista = enunciados_existentes[-MAX_ENUNCIADOS_NO_PROMPT:]
+        lista_formatada = "\n".join(
+            f"{i+1}. {e[:180]}{'...' if len(e) > 180 else ''}"
+            for i, e in enumerate(lista)
+        )
+        prompt_base += f"""
+
+============================================================
+⚠️ PROIBIDO REPETIR — NÃO gere questões iguais ou muito
+semelhantes a NENHUMA das {len(lista)} questões abaixo:
+
+{lista_formatada}
+============================================================
+"""
+    return prompt_base
+
+
+def _chamar_ia(prompt: str) -> list:
     try:
         response = _get_client().chat.completions.create(
-            model=GROQ_MODEL,
+            model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
+                {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
-            temperature=0.85,
+            temperature=0.95,
         )
     except Exception as e:
         msg = str(e)
-        if "429" in msg or "rate_limit" in msg.lower():
+        if "429" in msg or "insufficient_quota" in msg:
             raise RuntimeError(
-                "Limite de requisições do Groq atingido. Aguarde 1 minuto e tente novamente."
+                "Limite/cota da API atingido. Aguarde ou troque o modelo."
             ) from e
-        if "401" in msg or "invalid_api_key" in msg.lower():
+        if "401" in msg or "invalid_api_key" in msg:
             raise RuntimeError(
-                "GROQ_API_KEY inválida. Verifique os Secrets do Streamlit."
+                "Chave de API inválida. Verifique OPENAI_API_KEY nos Secrets."
+            ) from e
+        if "404" in msg or "model_not_found" in msg:
+            raise RuntimeError(
+                f"Modelo '{OPENAI_MODEL}' não encontrado. "
+                "Tente 'openai/gpt-oss-120b' (Groq) ou 'gpt-4o-mini' (OpenAI)."
             ) from e
         raise
 
     raw = response.choices[0].message.content or "{}"
     dados = json.loads(raw)
-    questoes_raw = dados.get("questoes", [])
+    return dados.get("questoes", [])
 
-    resultado = []
+
+def _validar_e_persistir(bloco, dificuldade, questoes_raw, hashes_sessao):
+    validas = []
     for q in questoes_raw:
         if not all(k in q for k in ("enunciado", "alternativas", "resposta_correta")):
             continue
 
+        enunciado = q["enunciado"].strip()
+        if not enunciado:
+            continue
+
+        h = _hash(enunciado)
+
+        if h in hashes_sessao:
+            continue
+
+        try:
+            if questao_ja_existe(h):
+                hashes_sessao.add(h)
+                continue
+        except Exception:
+            pass
+
         payload = {
-            "disciplina": disciplina,
-            "enunciado": q["enunciado"],
+            "disciplina": bloco,
+            "enunciado": enunciado,
             "alternativas": json.dumps(q["alternativas"], ensure_ascii=False),
             "resposta_correta": q["resposta_correta"].upper()[0],
             "explicacao": q.get("explicacao", ""),
             "dificuldade": dificuldade,
             "fonte": "IA",
-            "hash_conteudo": _hash(q["enunciado"]),
+            "hash_conteudo": h,
         }
 
-        if salvar and not questao_ja_existe(payload["hash_conteudo"]):
+        try:
             salvo = salvar_questao(payload)
             if salvo:
-                resultado.append(salvo)
-        else:
-            payload["id"] = f"temp-{payload['hash_conteudo'][:8]}"
-            resultado.append(payload)
-
-    return resultado
-
-
-def gerar_lote(disciplinas: list, n_por_disciplina: int = 5) -> list:
-    todas = []
-    for d in disciplinas:
-        try:
-            todas.extend(gerar_questoes(d, n_por_disciplina))
+                validas.append(salvo)
+                hashes_sessao.add(h)
+            else:
+                hashes_sessao.add(h)
         except Exception as e:
-            print(f"[erro] Falha ao gerar questões de {d}: {e}")
+            print(f"[aviso] Falha ao salvar: {e}")
+            hashes_sessao.add(h)
+
+    return validas
+
+
+def gerar_questoes(bloco, quantidade=5, dificuldade="medio", salvar=True):
+    """Gera questões únicas via IA, com foco na GMBC."""
+    if bloco not in BLOCOS:
+        raise ValueError(f"Bloco inválido: {bloco}")
+
+    try:
+        enunciados_existentes = buscar_enunciados_existentes(bloco, limite=200)
+    except Exception:
+        enunciados_existentes = []
+
+    resultado = []
+    hashes_sessao = set()
+    tentativa = 0
+
+    while len(resultado) < quantidade and tentativa < MAX_TENTATIVAS:
+        tentativa += 1
+        faltam = quantidade - len(resultado)
+
+        existentes_prompt = enunciados_existentes + [q["enunciado"] for q in resultado]
+        prompt = _montar_prompt(bloco, faltam, dificuldade, existentes_prompt)
+
+        try:
+            questoes_raw = _chamar_ia(prompt)
+        except Exception as e:
+            if tentativa == 1:
+                raise
+            print(f"[aviso] Tentativa {tentativa} falhou: {e}")
+            continue
+
+        novas = _validar_e_persistir(bloco, dificuldade, questoes_raw, hashes_sessao)
+        resultado.extend(novas)
+
+    return resultado[:quantidade]
+
+
+def gerar_lote(blocos: list, n_por_bloco: int = 5) -> list:
+    todas = []
+    for b in blocos:
+        try:
+            todas.extend(gerar_questoes(b, n_por_bloco))
+        except Exception as e:
+            print(f"[erro] Falha em {b}: {e}")
     return todas
