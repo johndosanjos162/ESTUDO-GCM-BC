@@ -17,28 +17,9 @@ def _get(key: str, default: str = "") -> str:
     return os.getenv(key, default)
 
 
-# ---------- IA ----------
-# Aceita tanto GROQ_API_KEY quanto OPENAI_API_KEY (o primeiro que existir)
-_API_KEY: str = (
-    _get("GROQ_API_KEY")
-    or _get("OPENAI_API_KEY")
-    or _get("API_KEY")
-)
-
-# Alias exposto para o resto do código
-OPENAI_API_KEY: str = _API_KEY
-GROQ_API_KEY: str = _API_KEY
-
-# Modelo — aceita qualquer um dos nomes nas Secrets
-OPENAI_MODEL: str = (
-    _get("GROQ_MODEL")
-    or _get("OPENAI_MODEL")
-    or "openai/gpt-oss-120b"
-)
-
-# URL base — Groq por padrão, mas pode ser sobrescrita
-API_BASE_URL: str = _get("API_BASE_URL", "https://api.groq.com/openai/v1")
-
+# ---------- IA (Groq / OpenAI) ----------
+OPENAI_API_KEY: str = _get("OPENAI_API_KEY")
+OPENAI_MODEL: str = _get("OPENAI_MODEL", "openai/gpt-oss-120b")
 
 # ---------- Supabase ----------
 SUPABASE_URL: str = _get("SUPABASE_URL")
@@ -61,6 +42,7 @@ BLOCOS = {
     "Conhecimentos_Gerais_Atualidades": "🧠 Conhecimentos Gerais e Atualidades",
 }
 
+# Ciclos semanais (agrupados por bloco)
 CICLO_A = [
     "Lingua_Portuguesa",
     "Legislacao_Guarda_Municipal",
@@ -81,6 +63,6 @@ def validar_configuracoes() -> list:
         erros.append("SUPABASE_URL")
     if not SUPABASE_ANON_KEY:
         erros.append("SUPABASE_ANON_KEY")
-    if not _API_KEY:
-        erros.append("GROQ_API_KEY (ou OPENAI_API_KEY)")
+    if not OPENAI_API_KEY:
+        erros.append("OPENAI_API_KEY")
     return erros
