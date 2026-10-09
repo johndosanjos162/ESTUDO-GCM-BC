@@ -1,4 +1,4 @@
-"""Caderno de Questões em PDF — geração via IA."""
+"""Caderno de Questões em PDF — com tema específico por bloco."""
 
 from datetime import datetime
 
@@ -19,16 +19,18 @@ if not user:
 st.title("📄 Caderno de Questões em PDF")
 st.caption(
     "Escolha quantas questões quer de cada bloco. "
-    "A IA gera questões inéditas com foco na Guarda Municipal de Balneário Camboriú."
+    "Opcionalmente, defina um TEMA ESPECÍFICO por bloco."
 )
 
 # ============================================================
-# SESSÃO: quantidades por bloco
+# SESSÃO
 # ============================================================
 if "qtd_por_bloco" not in st.session_state:
     st.session_state.qtd_por_bloco = {k: 0 for k in BLOCOS.keys()}
 if "incluir_bloco" not in st.session_state:
     st.session_state.incluir_bloco = {k: False for k in BLOCOS.keys()}
+if "tema_por_bloco" not in st.session_state:
+    st.session_state.tema_por_bloco = {k: "" for k in BLOCOS.keys()}
 
 # ============================================================
 # SIDEBAR
@@ -40,16 +42,12 @@ with st.sidebar:
         "Dificuldade",
         options=["facil", "medio", "dificil"],
         index=1,
-        format_func=lambda x: {
-            "facil": "Fácil", "medio": "Médio", "dificil": "Difícil"
-        }[x],
+        format_func=lambda x: {"facil": "Fácil", "medio": "Médio", "dificil": "Difícil"}[x],
     )
 
     st.divider()
-
     incluir_gabarito = st.checkbox("Incluir gabarito no final", value=True)
     incluir_explicacao = st.checkbox("Incluir explicações no gabarito", value=False)
-
     st.divider()
 
     titulo_caderno = st.text_input(
@@ -75,30 +73,23 @@ with st.sidebar:
         for k in BLOCOS:
             st.session_state.incluir_bloco[k] = False
             st.session_state.qtd_por_bloco[k] = 0
+            st.session_state.tema_por_bloco[k] = ""
         st.rerun()
 
 # ============================================================
-# TABELA DE SELEÇÃO
+# SELEÇÃO POR BLOCO
 # ============================================================
 st.subheader("🎯 Escolha a quantidade por bloco")
-st.caption("Marque os blocos que deseja incluir e defina quantas questões de cada um.")
-
-h1, h2, h3 = st.columns([3, 1, 1])
-with h1:
-    st.markdown("**Bloco**")
-with h2:
-    st.markdown("**Incluir?**")
-with h3:
-    st.markdown("**Nº questões**")
+st.caption("Marque os blocos, defina quantas questões e (opcional) um tema específico.")
 
 st.markdown("---")
 
 for chave, nome in BLOCOS.items():
+    # Linha principal
     c1, c2, c3 = st.columns([3, 1, 1])
 
     with c1:
         st.markdown(f"**{nome}**")
-
     with c2:
         inc = st.checkbox(
             "Incluir",
@@ -107,12 +98,10 @@ for chave, nome in BLOCOS.items():
             label_visibility="collapsed",
         )
         st.session_state.incluir_bloco[chave] = inc
-
     with c3:
         q = st.number_input(
             "Qtd",
-            min_value=0,
-            max_value=50,
+            min_value=0, max_value=50,
             value=st.session_state.qtd_por_bloco[chave],
             step=1,
             key=f"num_{chave}",
@@ -120,6 +109,19 @@ for chave, nome in BLOCOS.items():
             disabled=not inc,
         )
         st.session_state.qtd_por_bloco[chave] = q
+
+    # Campo de tema (só aparece se o bloco foi marcado)
+    if inc:
+        tema_atual = st.text_input(
+            f"🎯 Tema específico (opcional) para {nome}",
+            value=st.session_state.tema_por_bloco[chave],
+            key=f"tema_{chave}",
+            placeholder="Ex: Regra de Três, Crase, Prisão em flagrante...",
+        )
+        st.session_state.tema_por_bloco[chave] = tema_atual
+
+        if tema_atual.strip():
+            st.caption(f"✅ As questões de **{nome}** serão SOMENTE sobre **{tema_atual}**")
 
 st.markdown("---")
 
@@ -145,7 +147,11 @@ else:
 
     with st.expander("📖 Ver distribuição", expanded=True):
         for k, q in selecionados.items():
-            st.write(f"- **{BLOCOS[k]}**: {q} questão(ões)")
+            tema = st.session_state.tema_por_bloco.get(k, "").strip()
+            if tema:
+                st.write(f"- **{BLOCOS[k]}**: {q} questão(ões) — 🎯 Tema: **{tema}**")
+            else:
+                st.write(f"- **{BLOCOS[k]}**: {q} questão(ões)")
 
 st.divider()
 
@@ -167,49 +173,50 @@ if st.button(
 
     for i, (chave, qtd) in enumerate(selecionados.items()):
         nome_bloco = BLOCOS[chave]
-        prog.progress(
-            i / total_blocos,
-            text=f"Gerando {qtd} questões de {nome_bloco}..."
-        )
+        tema = st.session_state.tema_por_bloco.get(chave, "").strip()
+
+        texto = f"Gerando {qtd} questões de {nome_bloco}"
+        if tema:
+            texto += f" sobre '{tema}'"
+        prog.progress(i / total_blocos, text=texto + "...")
+
         try:
-            qs = gerar_questoes(chave, qtd, dificuldade)
+            qs = gerar_questoes(chave, qtd, dificuldade, tema=tema)
+
+            # Nome do bloco no PDF inclui o tema quando existir
+            nome_final = f"{nome_bloco} — {tema}" if tema else nome_bloco
+
             if qs:
-                questoes_por_bloco[nome_bloco] = qs
+                questoes_por_bloco[nome_final] = qs
                 if len(qs) < qtd:
                     faltam = qtd - len(qs)
                     avisos.append(
-                        f"**{nome_bloco}**: pedidas {qtd}, geradas {len(qs)} "
-                        f"({faltam} não vieram da IA — tente novamente)"
+                        f"**{nome_bloco}**"
+                        + (f" ({tema})" if tema else "")
+                        + f": pedidas {qtd}, geradas {len(qs)} "
+                        f"({faltam} não vieram — tente novamente)"
                     )
             else:
                 erros.append(
-                    f"**{nome_bloco}**: a IA não conseguiu gerar questões. "
-                    f"Tente novamente ou reduza a quantidade."
+                    f"**{nome_bloco}**"
+                    + (f" ({tema})" if tema else "")
+                    + ": a IA não conseguiu gerar questões."
                 )
         except Exception as e:
             erros.append(f"**{nome_bloco}**: {e}")
 
     prog.progress(1.0, text="Montando o PDF...")
 
-    # ---------- AVISOS ----------
     if avisos:
         st.warning("⚠️ Alguns blocos geraram menos questões que o solicitado:")
         for a in avisos:
             st.markdown(f"- {a}")
-        st.info(
-            "💡 **O que fazer?**\n\n"
-            "- Clique em **Gerar novamente** (a IA pode completar);\n"
-            "- Reduza a quantidade pedida para o bloco afetado;\n"
-            "- Verifique os logs se o problema persistir."
-        )
 
-    # ---------- ERROS ----------
     if erros:
         st.error("❌ Não foi possível gerar questões em alguns blocos:")
         for e in erros:
             st.markdown(f"- {e}")
 
-    # ---------- MONTA O PDF ----------
     if not questoes_por_bloco:
         st.error("Nenhuma questão foi gerada. Ajuste os blocos e tente novamente.")
         prog.empty()
