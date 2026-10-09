@@ -1,5 +1,4 @@
 """Autenticação com Supabase Auth."""
-"""Autenticação com Supabase Auth — apenas login/logout."""
 
 from __future__ import annotations
 from typing import Optional
@@ -7,6 +6,7 @@ from core.database import get_supabase
 
 
 def cadastrar_usuario(email: str, senha: str, nome: str) -> dict:
+    """Cria usuário no Auth e insere perfil (uso administrativo)."""
     client = get_supabase()
     auth_response = client.auth.sign_up({"email": email, "password": senha})
 
@@ -26,18 +26,23 @@ def cadastrar_usuario(email: str, senha: str, nome: str) -> dict:
 
 def login(email: str, senha: str):
     """Realiza login e retorna sessão."""
-client = get_supabase()
-return client.auth.sign_in_with_password({"email": email, "password": senha})
+    client = get_supabase()
+    return client.auth.sign_in_with_password(
+        {"email": email, "password": senha}
+    )
 
 
 def logout() -> None:
     """Encerra sessão."""
-client = get_supabase()
-client.auth.sign_out()
+    client = get_supabase()
+    client.auth.sign_out()
 
 
 def usuario_atual() -> Optional[object]:
     """Retorna usuário logado ou None."""
-client = get_supabase()
-try:
-response = client.auth.get_user()
+    client = get_supabase()
+    try:
+        response = client.auth.get_user()
+        return response.user if response else None
+    except Exception:
+        return None
