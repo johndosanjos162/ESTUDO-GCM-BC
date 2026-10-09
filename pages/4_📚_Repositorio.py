@@ -1,7 +1,7 @@
 """Repositório de questões geradas."""
 
 import streamlit as st
-from config import DISCIPLINAS
+from config import BLOCOS
 from core.database import buscar_questoes_por_disciplina, listar_questoes
 from utils.helpers import inicializar_session_state, parse_alternativas
 
@@ -15,12 +15,12 @@ if not user:
 st.title("📚 Repositório de Questões")
 
 filtro = st.selectbox(
-    "Disciplina",
-    options=["Todas"] + list(DISCIPLINAS.keys()),
-    format_func=lambda x: "Todas" if x == "Todas" else DISCIPLINAS[x],
+    "Bloco",
+    options=["Todos"] + list(BLOCOS.keys()),
+    format_func=lambda x: "Todos" if x == "Todos" else BLOCOS[x],
 )
 
-if filtro == "Todas":
+if filtro == "Todos":
     questoes = listar_questoes(limite=100)
 else:
     questoes = buscar_questoes_por_disciplina(filtro, limite=100)
@@ -33,7 +33,7 @@ if not questoes:
 
 for i, q in enumerate(questoes, start=1):
     alternativas = parse_alternativas(q["alternativas"])
-    titulo = f"[{DISCIPLINAS.get(q['disciplina'], q['disciplina'])}] {q['enunciado'][:80]}..."
+    titulo = f"[{BLOCOS.get(q['disciplina'], q['disciplina'])}] {q['enunciado'][:80]}..."
     with st.expander(titulo):
         st.write(q["enunciado"])
         for j, alt in enumerate(alternativas):
