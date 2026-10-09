@@ -5,7 +5,7 @@ import hashlib
 import json
 
 from openai import OpenAI
-from config import OPENAI_API_KEY, OPENAI_MODEL
+from config import OPENAI_API_KEY, OPENAI_MODEL, API_BASE_URL
 from ai.prompts import SYSTEM_PROMPT, BLOCOS
 from core.database import salvar_questao, questao_ja_existe
 
@@ -13,11 +13,18 @@ _client: OpenAI | None = None
 
 
 def _get_client() -> OpenAI:
+    """Cliente compatível com Groq (padrão) ou OpenAI."""
     global _client
     if _client is None:
         if not OPENAI_API_KEY:
-            raise RuntimeError("OPENAI_API_KEY não configurada.")
-        _client = OpenAI(api_key=openai/gpt-oss-120b)
+            raise RuntimeError(
+                "Chave de API ausente. Configure GROQ_API_KEY (ou OPENAI_API_KEY) "
+                "nos Secrets do Streamlit Cloud."
+            )
+        _client = OpenAI(
+            api_key=OPENAI_API_KEY,
+            base_url=API_BASE_URL,
+        )
     return _client
 
 
@@ -36,10 +43,7 @@ def gerar_questoes(
     dificuldade: str = "medio",
     salvar: bool = True,
 ) -> list[dict]:
-    """
-    Gera questões para um bloco específico.
-    bloco: chave do dicionário BLOCOS (ex.: 'Lingua_Portuguesa')
-    """
+    """Gera questões para um bloco específico."""
     info = BLOCOS.get(bloco)
     if not info:
         raise ValueError(f"Bloco inválido: {bloco}")
@@ -62,12 +66,16 @@ def gerar_questoes(
         msg = str(e)
         if "429" in msg or "insufficient_quota" in msg:
             raise RuntimeError(
-                "Sem créditos na API. Adicione fundos ou troque o modelo."
+                "Sem créditos ou limite atingido. Aguarde ou troque a chave."
             ) from e
         if "404" in msg or "model_not_found" in msg:
             raise RuntimeError(
                 f"Modelo '{OPENAI_MODEL}' não encontrado. "
-                "Verifique os Secrets."
+                "Troque para 'llama-3.1-8b-instant' nos Secrets."
+            ) from e
+        if "401" in msg or "invalid_api_key" in msg:
+            raise RuntimeError(
+                "Chave de API inválida. Verifique os Secrets."
             ) from e
         raise
 
