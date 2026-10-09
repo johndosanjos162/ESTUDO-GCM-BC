@@ -3,7 +3,7 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
 
-from config import CICLO_A, CICLO_B, DISCIPLINAS
+from config import CICLO_A, CICLO_B, BLOCOS
 from core.database import obter_perfil, atualizar_ciclo
 
 
@@ -19,7 +19,7 @@ def obter_ciclo_atual(usuario_id: str) -> dict:
         return {
             "numero_ciclo": 1,
             "disciplinas": CICLO_A,
-            "nomes": [DISCIPLINAS[d] for d in CICLO_A],
+            "nomes": [BLOCOS.get(d, d) for d in CICLO_A],
             "proxima_alternancia": _proxima_segunda(),
         }
 
@@ -31,7 +31,7 @@ def obter_ciclo_atual(usuario_id: str) -> dict:
     return {
         "numero_ciclo": ciclo_ativo,
         "disciplinas": disciplinas,
-        "nomes": [DISCIPLINAS[d] for d in disciplinas],
+        "nomes": [BLOCOS.get(d, d) for d in disciplinas],
         "proxima_alternancia": _proxima_segunda(),
     }
 
