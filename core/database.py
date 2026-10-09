@@ -36,13 +36,25 @@ def salvar_questao(dados):
 
 def questao_ja_existe(hash_conteudo):
     client = get_supabase()
-    response = client.table("questoes").select("id").eq("hash_conteudo", hash_conteudo).limit(1).execute()
+    response = (
+        client.table("questoes")
+        .select("id")
+        .eq("hash_conteudo", hash_conteudo)
+        .limit(1)
+        .execute()
+    )
     return bool(response.data)
 
 
 def listar_questoes(limite=100):
     client = get_supabase()
-    response = client.table("questoes").select("*").order("criado_em", desc=True).limit(limite).execute()
+    response = (
+        client.table("questoes")
+        .select("*")
+        .order("criado_em", desc=True)
+        .limit(limite)
+        .execute()
+    )
     return response.data or []
 
 
@@ -61,7 +73,12 @@ def buscar_enunciados_existentes(disciplina, limite=200):
 
 def contar_questoes_por_disciplina(disciplina):
     client = get_supabase()
-    response = client.table("questoes").select("id", count="exact").eq("disciplina", disciplina).execute()
+    response = (
+        client.table("questoes")
+        .select("id", count="exact")
+        .eq("disciplina", disciplina)
+        .execute()
+    )
     return response.count or 0
 
 
@@ -75,7 +92,12 @@ def salvar_resposta(dados):
 
 def buscar_historico_usuario(usuario_id, disciplina=None, limite=100):
     client = get_supabase()
-    query = client.table("respostas").select("*").eq("usuario_id", usuario_id).order("respondido_em", desc=True)
+    query = (
+        client.table("respostas")
+        .select("*")
+        .eq("usuario_id", usuario_id)
+        .order("respondido_em", desc=True)
+    )
     if disciplina:
         query = query.eq("disciplina", disciplina)
     response = query.limit(limite).execute()
@@ -85,7 +107,10 @@ def buscar_historico_usuario(usuario_id, disciplina=None, limite=100):
 def estatisticas_por_disciplina(usuario_id):
     client = get_supabase()
     try:
-        response = client.rpc("estatisticas_disciplina", {"p_usuario_id": usuario_id}).execute()
+        response = client.rpc(
+            "estatisticas_disciplina",
+            {"p_usuario_id": usuario_id},
+        ).execute()
         return response.data or []
     except Exception:
         historico = buscar_historico_usuario(usuario_id, limite=1000)
@@ -117,13 +142,24 @@ def apagar_respostas_por_ids(ids):
 
 def apagar_todo_historico(usuario_id):
     client = get_supabase()
-    response = client.table("respostas").delete().eq("usuario_id", usuario_id).execute()
+    response = (
+        client.table("respostas")
+        .delete()
+        .eq("usuario_id", usuario_id)
+        .execute()
+    )
     return len(response.data) if response.data else 0
 
 
 def apagar_historico_por_disciplina(usuario_id, disciplina):
     client = get_supabase()
-    response = client.table("respostas").delete().eq("usuario_id", usuario_id).eq("disciplina", disciplina).execute()
+    response = (
+        client.table("respostas")
+        .delete()
+        .eq("usuario_id", usuario_id)
+        .eq("disciplina", disciplina)
+        .execute()
+    )
     return len(response.data) if response.data else 0
 
 
@@ -131,10 +167,18 @@ def apagar_historico_por_disciplina(usuario_id, disciplina):
 
 def obter_perfil(usuario_id):
     client = get_supabase()
-    response = client.table("profiles").select("*").eq("id", usuario_id).limit(1).execute()
+    response = (
+        client.table("profiles")
+        .select("*")
+        .eq("id", usuario_id)
+        .limit(1)
+        .execute()
+    )
     return response.data[0] if response.data else None
 
 
 def atualizar_ciclo(usuario_id, novo_ciclo):
     client = get_supabase()
-    client.table("profiles").update({"ciclo_atual": novo_ciclo}).eq("id", usuario_id).execute()
+    client.table("profiles").update(
+        {"ciclo_atual": novo_ciclo}
+    ).eq("id", usuario_id).execute()
