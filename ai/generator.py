@@ -1,28 +1,23 @@
-"""Geração de questões inéditas via Groq (gratuito)."""
+"""Geração de questões via IA — com blocos de estudo."""
 
 from __future__ import annotations
 import hashlib
 import json
 
 from openai import OpenAI
-
-from config import GROQ_API_KEY, GROQ_MODEL
-from ai.prompts import SYSTEM_PROMPT, PROMPTS_DISCIPLINAS
+from config import OPENAI_API_KEY, OPENAI_MODEL
+from ai.prompts import SYSTEM_PROMPT, BLOCOS
 from core.database import salvar_questao, questao_ja_existe
 
-_client = None
+_client: OpenAI | None = None
 
 
 def _get_client() -> OpenAI:
-    """Cliente apontando para a API do Groq (compatível com OpenAI SDK)."""
     global _client
     if _client is None:
-        if not GROQ_API_KEY:
-            raise RuntimeError("GROQ_API_KEY não configurada nos Secrets.")
-        _client = OpenAI(
-            api_key=GROQ_API_KEY,
-            base_url="https://api.groq.com/openai/v1",
-        )
+        if not OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY não configurada.")
+        _client = OpenAI(api_key=OPENAI_API_KEY)
     return _client
 
 
@@ -30,21 +25,32 @@ def _hash(texto: str) -> str:
     return hashlib.sha256(texto.strip().encode("utf-8")).hexdigest()
 
 
+def listar_blocos() -> dict:
+    """Retorna todos os blocos disponíveis."""
+    return BLOCOS
+
+
 def gerar_questoes(
-    disciplina: str,
+    bloco: str,
     quantidade: int = 5,
     dificuldade: str = "medio",
     salvar: bool = True,
-) -> list:
-    template = PROMPTS_DISCIPLINAS.get(disciplina)
-    if not template:
-        raise ValueError(f"Disciplina inválida: {disciplina}")
+) -> list[dict]:
+    """
+    Gera questões para um bloco específico.
+    bloco: chave do dicionário BLOCOS (ex.: 'Lingua_Portuguesa')
+    """
+    info = BLOCOS.get(bloco)
+    if not info:
+        raise ValueError(f"Bloco inválido: {bloco}")
 
-    user_prompt = template.format(n=quantidade, dificuldade=dificuldade)
+    user_prompt = info["prompt"].format(
+        n=quantidade, dificuldade=dificuldade
+    )
 
     try:
         response = _get_client().chat.completions.create(
-            model=GROQ_MODEL,
+            model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
@@ -54,13 +60,14 @@ def gerar_questoes(
         )
     except Exception as e:
         msg = str(e)
-        if "429" in msg or "rate_limit" in msg.lower():
+        if "429" in msg or "insufficient_quota" in msg:
             raise RuntimeError(
-                "Limite de requisições do Groq atingido. Aguarde 1 minuto e tente novamente."
+                "Sem créditos na API. Adicione fundos ou troque o modelo."
             ) from e
-        if "401" in msg or "invalid_api_key" in msg.lower():
+        if "404" in msg or "model_not_found" in msg:
             raise RuntimeError(
-                "GROQ_API_KEY inválida. Verifique os Secrets do Streamlit."
+                f"Modelo '{OPENAI_MODEL}' não encontrado. "
+                "Verifique os Secrets."
             ) from e
         raise
 
@@ -74,7 +81,7 @@ def gerar_questoes(
             continue
 
         payload = {
-            "disciplina": disciplina,
+            "disciplina": bloco,
             "enunciado": q["enunciado"],
             "alternativas": json.dumps(q["alternativas"], ensure_ascii=False),
             "resposta_correta": q["resposta_correta"].upper()[0],
@@ -95,11 +102,12 @@ def gerar_questoes(
     return resultado
 
 
-def gerar_lote(disciplinas: list, n_por_disciplina: int = 5) -> list:
+def gerar_lote(blocos: list, n_por_bloco: int = 5) -> list:
+    """Gera questões para múltiplos blocos."""
     todas = []
-    for d in disciplinas:
+    for b in blocos:
         try:
-            todas.extend(gerar_questoes(d, n_por_disciplina))
+            todas.extend(gerar_questoes(b, n_por_bloco))
         except Exception as e:
-            print(f"[erro] Falha ao gerar questões de {d}: {e}")
+            print(f"[erro] Falha ao gerar questões de {b}: {e}")
     return todas
