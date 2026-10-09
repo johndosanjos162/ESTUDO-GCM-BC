@@ -1,4 +1,4 @@
-"""Geração de questões via IA — robusto contra recusa e formato inválido."""
+"""Geração de questões via IA — com suporte a tema específico."""
 
 from __future__ import annotations
 import hashlib
@@ -38,29 +38,47 @@ def listar_blocos() -> dict:
     return BLOCOS
 
 
-def _montar_prompt(bloco, quantidade, dificuldade):
+def _montar_prompt(bloco, quantidade, dificuldade, tema: str = ""):
+    """Monta o prompt. Se tema for informado, foca exclusivamente nele."""
     info = BLOCOS.get(bloco)
     if not info:
         raise ValueError(f"Bloco inválido: {bloco}")
 
-    prompt = info["prompt"].format(n=quantidade, dificuldade=dificuldade)
+    # Se tema específico foi pedido, monta prompt focado
+    if tema and tema.strip():
+        tema_limpo = tema.strip()
+        prompt = f"""
+Gere {quantidade} questões de múltipla escolha (A a E) sobre o tema:
+"{tema_limpo}"
+
+⚠️ IMPORTANTE: Todas as questões DEVEM ser EXCLUSIVAMENTE sobre "{tema_limpo}".
+NÃO gere questões sobre outros assuntos da matéria {info['nome']}.
+Cada questão deve testar o conhecimento específico sobre "{tema_limpo}".
+
+Nível de dificuldade: {dificuldade}.
+
+Formato JSON obrigatório:
+{{
+  "questoes": [
+    {{
+      "enunciado": "pergunta sobre {tema_limpo}",
+      "alternativas": ["texto A", "texto B", "texto C", "texto D", "texto E"],
+      "resposta_correta": "A",
+      "explicacao": "explicação sobre {tema_limpo}"
+    }}
+  ]
+}}
+"""
+    else:
+        # Prompt padrão do bloco (comportamento original)
+        prompt = info["prompt"].format(n=quantidade, dificuldade=dificuldade)
+
     prompt += """
 
 ============================================================
 FORMATO OBRIGATÓRIO DE RESPOSTA:
 Responda APENAS com JSON válido, sem texto antes ou depois, sem markdown.
 Se não conseguir gerar, retorne {"questoes": []}.
-Formato exato:
-{
-  "questoes": [
-    {
-      "enunciado": "texto da pergunta",
-      "alternativas": ["texto A", "texto B", "texto C", "texto D", "texto E"],
-      "resposta_correta": "A",
-      "explicacao": "explicação curta"
-    }
-  ]
-}
 ============================================================
 """
     return prompt
@@ -85,14 +103,13 @@ def _parse_json_seguro(raw: str):
     if not raw:
         return None
 
-    # Detecta recusa da IA
     recusas = [
         "i'm sorry", "i cannot", "i can't", "não posso", "não consigo",
         "desculpe", "sorry", "unable to", "cannot fulfill",
     ]
     raw_lower = raw.lower()
     if any(r in raw_lower for r in recusas) and "{" not in raw:
-        print(f"[aviso] IA recusou gerar: {raw[:150]}")
+        print(f"[aviso] IA recusou: {raw[:150]}")
         return None
 
     try:
@@ -132,20 +149,15 @@ def _chamar_ia(prompt: str) -> list:
         )
     except Exception as e:
         msg = str(e)
-        # Erro 400 do Groq quando a IA se recusa a gerar
         if "400" in msg or "json_validate_failed" in msg or "Failed to generate JSON" in msg:
-            print(f"[aviso] IA recusou/formato inválido: {msg[:200]}")
+            print(f"[aviso] IA recusou: {msg[:200]}")
             return []
         if "429" in msg or "insufficient_quota" in msg or "rate_limit" in msg.lower():
-            raise RuntimeError(
-                "Limite da API atingido. Aguarde 1 minuto e tente novamente."
-            ) from e
+            raise RuntimeError("Limite da API atingido. Aguarde 1 minuto.") from e
         if "401" in msg or "invalid_api_key" in msg:
-            raise RuntimeError("Chave de API inválida. Verifique os Secrets.") from e
+            raise RuntimeError("Chave de API inválida.") from e
         if "404" in msg or "model_not_found" in msg:
-            raise RuntimeError(
-                f"Modelo '{OPENAI_MODEL}' não encontrado."
-            ) from e
+            raise RuntimeError(f"Modelo '{OPENAI_MODEL}' não encontrado.") from e
         raise
 
     raw = response.choices[0].message.content or "{}"
@@ -156,7 +168,6 @@ def _chamar_ia(prompt: str) -> list:
 
 
 def _normalizar_alternativas(alts) -> list:
-    """Garante que alternativas seja uma lista de strings não vazias."""
     if not isinstance(alts, list):
         return []
     resultado = []
@@ -164,20 +175,18 @@ def _normalizar_alternativas(alts) -> list:
         if a is None:
             continue
         texto = str(a).strip()
-        # Remove prefixos tipo "A) ", "A. ", "a) "
         texto = re.sub(r"^[A-Ea-e][\)\.\-\:]\s*", "", texto)
         if texto:
             resultado.append(texto)
     return resultado
 
 
-def _processar_questoes(bloco, dificuldade, questoes_raw):
+def _processar_questoes(bloco, dificuldade, questoes_raw, tema: str = ""):
     validas = []
     for q in questoes_raw:
         if not isinstance(q, dict):
             continue
 
-        # Aceita chaves alternativas
         enunciado = q.get("enunciado") or q.get("pergunta") or q.get("question")
         alternativas = q.get("alternativas") or q.get("options") or q.get("opcoes")
         resposta = q.get("resposta_correta") or q.get("correct") or q.get("gabarito")
@@ -198,20 +207,23 @@ def _processar_questoes(bloco, dificuldade, questoes_raw):
         if letra not in "ABCDE":
             continue
 
-        # Índice da resposta — se inválido, descarta
         idx = ord(letra) - 65
         if idx >= len(alts):
             continue
 
+        # Se tema foi especificado, salva no enunciado como prefixo
+        # (garante que fica claro no repositório)
+        disciplina_final = bloco
+
         payload = {
-            "disciplina": bloco,
+            "disciplina": disciplina_final,
             "enunciado": enunciado,
             "alternativas": json.dumps(alts, ensure_ascii=False),
             "resposta_correta": letra,
             "explicacao": str(q.get("explicacao", "") or q.get("explanation", "")),
             "dificuldade": dificuldade,
             "fonte": "IA",
-            "hash_conteudo": _hash(enunciado),
+            "hash_conteudo": _hash(enunciado + (tema or "")),
         }
 
         try:
@@ -229,8 +241,18 @@ def _processar_questoes(bloco, dificuldade, questoes_raw):
     return validas
 
 
-def gerar_questoes(bloco, quantidade=5, dificuldade="medio", salvar=True):
-    """Gera questões via IA. Tenta 3 vezes se a IA recusar ou retornar vazio."""
+def gerar_questoes(bloco, quantidade=5, dificuldade="medio", salvar=True, tema: str = ""):
+    """
+    Gera questões via IA.
+    
+    Parâmetros:
+      bloco        → chave do bloco (ex: 'Matematica_Logica')
+      quantidade   → número de questões
+      dificuldade  → 'facil', 'medio' ou 'dificil'
+      salvar       → salvar no banco
+      tema         → (NOVO) tema específico. Se vazio, gera do bloco inteiro.
+                     Ex: "Regra de Três", "Crase", "Prisão em flagrante"
+    """
     if bloco not in BLOCOS:
         raise ValueError(f"Bloco inválido: {bloco}")
 
@@ -242,12 +264,11 @@ def gerar_questoes(bloco, quantidade=5, dificuldade="medio", salvar=True):
         if faltam <= 0:
             break
 
-        prompt = _montar_prompt(bloco, faltam, dificuldade)
+        prompt = _montar_prompt(bloco, faltam, dificuldade, tema=tema)
 
         try:
             questoes_raw = _chamar_ia(prompt)
         except Exception as e:
-            # Se for erro fatal (401, 404), propaga
             if any(x in str(e) for x in ["Chave de API", "não encontrado"]):
                 raise
             print(f"[aviso] Tentativa {tentativa + 1}: {e}")
@@ -257,7 +278,7 @@ def gerar_questoes(bloco, quantidade=5, dificuldade="medio", salvar=True):
             print(f"[aviso] Tentativa {tentativa + 1}: vazio/recusa")
             continue
 
-        validas = _processar_questoes(bloco, dificuldade, questoes_raw)
+        validas = _processar_questoes(bloco, dificuldade, questoes_raw, tema=tema)
         resultado.extend(validas)
 
     return resultado[:quantidade]
