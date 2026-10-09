@@ -34,18 +34,30 @@ APP_TITLE = "Estudos GM Balneário Camboriú"
 APP_ICON = "📚"
 APP_LAYOUT = "wide"
 
-# ---------- Disciplinas ----------
-DISCIPLINAS = {
-    "Lingua_Portuguesa": "Língua Portuguesa",
-    "Matematica": "Matemática",
-    "Legislacao_Guarda_Municipal": "Legislação da Guarda Municipal",
-    "Conhecimentos_Balneario_Camboriu": "Conhecimentos de Balneário Camboriú",
+# ---------- Blocos de Estudo ----------
+BLOCOS = {
+    "Lingua_Portuguesa": "🇧🇷 Língua Portuguesa",
+    "Matematica_Logica": "🔢 Matemática e Raciocínio Lógico",
+    "Direito_Penal_Processual": "⚖️ Direito Penal e Processual Penal",
+    "Legislacao_Guarda_Municipal": "📜 Legislação da Guarda Municipal",
+    "Direito_Constitucional_Administrativo": "🏛️ Direito Constitucional e Administrativo",
+    "Conhecimentos_Balneario_Camboriu": "🌴 Conhecimentos de Balneário Camboriú",
+    "Legislacoes_Especiais": "📋 Legislações Especiais",
+    "Conhecimentos_Gerais_Atualidades": "🧠 Conhecimentos Gerais e Atualidades",
 }
 
-# ---------- Ciclos semanais ----------
-CICLO_A = ["Lingua_Portuguesa", "Legislacao_Guarda_Municipal"]
-CICLO_B = ["Matematica", "Conhecimentos_Balneario_Camboriu"]
+# Ciclos semanais (agrupados por bloco)
+CICLO_A = [
+    "Lingua_Portuguesa",
+    "Legislacao_Guarda_Municipal",
+    "Direito_Penal_Processual",
+]
 
+CICLO_B = [
+    "Matematica_Logica",
+    "Conhecimentos_Balneario_Camboriu",
+    "Direito_Constitucional_Administrativo",
+]
 
 def validar_configuracoes() -> list:
     """Retorna lista de variáveis faltantes."""
