@@ -7,7 +7,7 @@ load_dotenv()
 
 
 def _get(key: str, default: str = "") -> str:
-    """Lê de st.secrets (Streamlit Cloud) ou de variáveis de ambiente (local)."""
+    """Lê de st.secrets (Cloud) ou de variáveis de ambiente (local)."""
     try:
         import streamlit as st
         if key in st.secrets:
@@ -16,10 +16,6 @@ def _get(key: str, default: str = "") -> str:
         pass
     return os.getenv(key, default)
 
-
-# ---------- IA (Groq / OpenAI) ----------
-OPENAI_API_KEY: str = _get("OPENAI_API_KEY")
-OPENAI_MODEL: str = _get("OPENAI_MODEL", "openai/gpt-oss-120b")
 
 # ---------- Supabase ----------
 SUPABASE_URL: str = _get("SUPABASE_URL")
@@ -42,7 +38,10 @@ BLOCOS = {
     "Conhecimentos_Gerais_Atualidades": "🧠 Conhecimentos Gerais e Atualidades",
 }
 
-# Ciclos semanais (agrupados por bloco)
+# ALIAS para compatibilidade com código legado
+DISCIPLINAS = BLOCOS
+
+# ---------- Ciclos semanais ----------
 CICLO_A = [
     "Lingua_Portuguesa",
     "Legislacao_Guarda_Municipal",
@@ -57,12 +56,10 @@ CICLO_B = [
 
 
 def validar_configuracoes() -> list:
-    """Retorna lista de variáveis faltantes."""
+    """Retorna lista de variáveis faltantes (só Supabase agora)."""
     erros = []
     if not SUPABASE_URL:
         erros.append("SUPABASE_URL")
     if not SUPABASE_ANON_KEY:
         erros.append("SUPABASE_ANON_KEY")
-    if not OPENAI_API_KEY:
-        erros.append("OPENAI_API_KEY")
     return erros
