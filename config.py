@@ -17,6 +17,10 @@ def _get(key: str, default: str = "") -> str:
     return os.getenv(key, default)
 
 
+# ---------- IA (Groq ou OpenAI — detecção automática) ----------
+OPENAI_API_KEY: str = _get("OPENAI_API_KEY")
+OPENAI_MODEL: str = _get("OPENAI_MODEL", "openai/gpt-oss-120b")
+
 # ---------- Supabase ----------
 SUPABASE_URL: str = _get("SUPABASE_URL")
 SUPABASE_ANON_KEY: str = _get("SUPABASE_ANON_KEY")
@@ -38,7 +42,7 @@ BLOCOS = {
     "Conhecimentos_Gerais_Atualidades": "🧠 Conhecimentos Gerais e Atualidades",
 }
 
-# ALIAS para compatibilidade com código legado
+# Alias para compatibilidade com código legado
 DISCIPLINAS = BLOCOS
 
 # ---------- Ciclos semanais ----------
@@ -56,10 +60,12 @@ CICLO_B = [
 
 
 def validar_configuracoes() -> list:
-    """Retorna lista de variáveis faltantes (só Supabase agora)."""
+    """Retorna lista de variáveis faltantes."""
     erros = []
     if not SUPABASE_URL:
         erros.append("SUPABASE_URL")
     if not SUPABASE_ANON_KEY:
         erros.append("SUPABASE_ANON_KEY")
+    if not OPENAI_API_KEY:
+        erros.append("OPENAI_API_KEY")
     return erros
