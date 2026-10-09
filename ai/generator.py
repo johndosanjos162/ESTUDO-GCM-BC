@@ -37,8 +37,7 @@ def gerar_questoes(
     salvar: bool = True,
 ) -> list[dict]:
     """
-    Gera questões para um bloco específico.
-    bloco: chave do dicionário BLOCOS (ex.: 'Lingua_Portuguesa')
+    Gera questões para um bloco específico com foco EXCLUSIVO na GMBC.
     """
     info = BLOCOS.get(bloco)
     if not info:
@@ -47,6 +46,20 @@ def gerar_questoes(
     user_prompt = info["prompt"].format(
         n=quantidade, dificuldade=dificuldade
     )
+
+    # ⚠️ REFORÇO OBRIGATÓRIO DO FOCO
+    user_prompt += """
+
+============================================================
+REFORÇO OBRIGATÓRIO DE FOCO:
+Todas as questões geradas devem ser EXCLUSIVAMENTE sobre o concurso
+da Guarda Municipal de Balneário Camboriú (SC).
+- NÃO gere questões genéricas de concursos de outras áreas.
+- NÃO gere questões sobre temas que não constam no edital da GMBC.
+- Contextualize SEMPRE com situações, leis e dados do município.
+- Se a questão for de Português/Matemática, use exemplos da corporação.
+============================================================
+"""
 
     try:
         response = _get_client().chat.completions.create(
@@ -100,7 +113,6 @@ def gerar_questoes(
             resultado.append(payload)
 
     return resultado
-
 
 def gerar_lote(blocos: list, n_por_bloco: int = 5) -> list:
     """Gera questões para múltiplos blocos."""
