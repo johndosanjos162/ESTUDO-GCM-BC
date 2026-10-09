@@ -127,20 +127,33 @@ def estatisticas_por_disciplina(usuario_id):
 # ---------------- EXCLUSÃO DE HISTÓRICO ----------------
 
 def apagar_resposta(resposta_id):
+    """Apaga uma resposta específica pelo ID."""
     client = get_supabase()
-    response = client.table("respostas").delete().eq("id", resposta_id).execute()
+    response = (
+        client.table("respostas")
+        .delete()
+        .eq("id", resposta_id)
+        .execute()
+    )
     return bool(response.data)
 
 
 def apagar_respostas_por_ids(ids):
+    """Apaga várias respostas de uma vez."""
     if not ids:
         return 0
     client = get_supabase()
-    response = client.table("respostas").delete().in_("id", ids).execute()
+    response = (
+        client.table("respostas")
+        .delete()
+        .in_("id", ids)
+        .execute()
+    )
     return len(response.data) if response.data else 0
 
 
 def apagar_todo_historico(usuario_id):
+    """Apaga TODO o histórico do usuário."""
     client = get_supabase()
     response = (
         client.table("respostas")
@@ -152,6 +165,7 @@ def apagar_todo_historico(usuario_id):
 
 
 def apagar_historico_por_disciplina(usuario_id, disciplina):
+    """Apaga todo o histórico de um bloco específico."""
     client = get_supabase()
     response = (
         client.table("respostas")
