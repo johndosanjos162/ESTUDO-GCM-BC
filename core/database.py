@@ -136,3 +136,32 @@ def apagar_historico_por_disciplina(usuario_id: str, disciplina: str) -> int:
 def atualizar_ciclo(usuario_id: str, novo_ciclo: int) -> None:
     client = get_supabase()
     client.table("profiles").update({"ciclo_atual": novo_ciclo}).eq("id", usuario_id).execute()
+    # ------------------- ANTI-REPETIÇÃO -------------------
+
+def buscar_enunciados_existentes(disciplina: str, limite: int = 200) -> list[str]:
+    """
+    Retorna os enunciados já gerados para um bloco.
+    Usado para instruir a IA a NÃO repetir questões.
+    """
+    client = get_supabase()
+    response = (
+        client.table("questoes")
+        .select("enunciado")
+        .eq("disciplina", disciplina)
+        .order("criado_em", desc=True)
+        .limit(limite)
+        .execute()
+    )
+    return [row["enunciado"] for row in (response.data or [])]
+
+
+def contar_questoes_por_disciplina(disciplina: str) -> int:
+    """Retorna quantas questões existem no banco para um bloco."""
+    client = get_supabase()
+    response = (
+        client.table("questoes")
+        .select("id", count="exact")
+        .eq("disciplina", disciplina)
+        .execute()
+    )
+    return response.count or 0
