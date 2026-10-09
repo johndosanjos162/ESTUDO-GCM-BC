@@ -37,6 +37,7 @@ def _hash(texto: str) -> str:
 
 
 def listar_blocos() -> dict:
+    """Retorna todos os blocos disponíveis."""
     return BLOCOS
 
 
@@ -53,24 +54,25 @@ def _montar_prompt(
 
     prompt_base = info["prompt"].format(n=quantidade, dificuldade=dificuldade)
 
-    # Reforço de foco no concurso
+    # Reforço obrigatório de foco no concurso
     prompt_base += """
 
 ============================================================
 REFORÇO OBRIGATÓRIO DE FOCO:
-Todas as questões devem ser EXCLUSIVAMENTE sobre o concurso
+Todas as questões geradas devem ser EXCLUSIVAMENTE sobre o concurso
 da Guarda Municipal de Balneário Camboriú (SC).
-- NÃO gere questões genéricas de outras áreas.
-- Contextualize com situações, leis e dados do município.
+- NÃO gere questões genéricas de concursos de outras áreas.
+- NÃO gere questões sobre temas que não constam no edital da GMBC.
+- Contextualize SEMPRE com situações, leis e dados do município.
+- Se a questão for de Português/Matemática, use exemplos da corporação.
 ============================================================
 """
 
     # Lista de enunciados já existentes (evitar repetição)
     if enunciados_existentes:
         lista = enunciados_existentes[-MAX_ENUNCIADOS_NO_PROMPT:]
-        # trunca cada enunciado para economizar tokens
         lista_formatada = "\n".join(
-            f"{i+1}. {e[:180]}{'...' if len(e) > 180 else ''}"
+            f"{i + 1}. {e[:180]}{'...' if len(e) > 180 else ''}"
             for i, e in enumerate(lista)
         )
         prompt_base += f"""
@@ -96,7 +98,7 @@ def _chamar_ia(prompt: str) -> list[dict]:
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
-            temperature=0.95,   # ⬆️ mais criativo = mais variedade
+            temperature=0.95,   # mais criativo = mais variedade
         )
     except Exception as e:
         msg = str(e)
@@ -121,12 +123,13 @@ def _validar_e_persistir(
     dificuldade: str,
     questoes_raw: list[dict],
     hashes_sessao: set,
+    salvar: bool = True,
 ) -> list[dict]:
     """
     Valida cada questão:
       - descarta se o hash já existe no banco
       - descarta se o hash já foi gerado nesta sessão
-      - salva as novas no banco
+      - salva as novas no banco (se salvar=True)
     Retorna apenas as válidas.
     """
     validas = []
@@ -163,13 +166,18 @@ def _validar_e_persistir(
             "hash_conteudo": h,
         }
 
+        if not salvar:
+            payload["id"] = f"temp-{h[:8]}"
+            validas.append(payload)
+            hashes_sessao.add(h)
+            continue
+
         try:
             salvo = salvar_questao(payload)
             if salvo:
                 validas.append(salvo)
                 hashes_sessao.add(h)
             else:
-                # não salvou (hash duplicado no banco por race) — descarta
                 hashes_sessao.add(h)
         except Exception as e:
             print(f"[aviso] Falha ao salvar questão: {e}")
@@ -185,13 +193,19 @@ def gerar_questoes(
     salvar: bool = True,
 ) -> list[dict]:
     """
-    Gera questões ÚNICAS para um bloco, com foco na GMBC.
-    Faz até MAX_TENTATIVAS rodadas para conseguir a quantidade pedida.
+    Gera questões ÚNICAS para um bloco, com foco EXCLUSIVO na GMBC.
+
+    Estratégia anti-repetição:
+      1. Busca enunciados já existentes no banco para NÃO repetir
+      2. Envia a lista no prompt (a IA evita repetir)
+      3. Valida cada questão pelo hash SHA-256
+      4. Se faltarem, tenta novamente (até MAX_TENTATIVAS)
+      5. Salva as novas no banco para futuras consultas
     """
     if bloco not in BLOCOS:
         raise ValueError(f"Bloco inválido: {bloco}")
 
-    # 1) Busca enunciados já existentes no banco para NÃO repetir
+    # 1) Busca enunciados já existentes no banco
     try:
         enunciados_existentes = buscar_enunciados_existentes(bloco, limite=200)
     except Exception:
@@ -218,14 +232,13 @@ def gerar_questoes(
         try:
             questoes_raw = _chamar_ia(prompt)
         except Exception as e:
-            # Se falhar na primeira tentativa, propaga o erro
             if tentativa == 1:
-                raise
+                raise  # primeira tentativa falhou → propaga o erro
             print(f"[aviso] Tentativa {tentativa} falhou: {e}")
             continue
 
         novas = _validar_e_persistir(
-            bloco, dificuldade, questoes_raw, hashes_sessao
+            bloco, dificuldade, questoes_raw, hashes_sessao, salvar=salvar
         )
         resultado.extend(novas)
 
@@ -233,7 +246,7 @@ def gerar_questoes(
 
 
 def gerar_lote(blocos: list, n_por_bloco: int = 5) -> list:
-    """Gera questões para múltiplos blocos (útil para testes)."""
+    """Gera questões para múltiplos blocos (útil para testes em lote)."""
     todas = []
     for b in blocos:
         try:
