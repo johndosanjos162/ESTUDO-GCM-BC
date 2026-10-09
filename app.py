@@ -16,33 +16,69 @@ st.set_page_config(
 carregar_css()
 inicializar_session_state()
 
+# ============================================================
+# VALIDAÇÃO DE CONFIGURAÇÃO
+# ============================================================
 faltando = validar_configuracoes()
 if faltando:
     st.error(
         "⚠️ Variáveis de ambiente ausentes: " + ", ".join(faltando)
-        + "\n\nConfigure os Secrets no Streamlit Cloud ou o .env local."
+        + "\n\nConfigure os Secrets no Streamlit Cloud."
     )
     st.stop()
 
+# ============================================================
+# VERIFICA SE ESTÁ LOGADO
+# ============================================================
+logado = bool(st.session_state.get("user"))
+
+# ============================================================
+# ESCONDE A SIDEBAR QUANDO NÃO ESTIVER LOGADO
+# ============================================================
+if not logado:
+    st.markdown(
+        """
+        <style>
+        /* Esconde a barra lateral inteira */
+        section[data-testid="stSidebar"] {
+            display: none !important;
+        }
+        /* Remove o botão de abrir/fechar a sidebar */
+        button[data-testid="collapsedControl"] {
+            display: none !important;
+        }
+        /* Esconde a navegação multipágina automática */
+        [data-testid="stSidebarNav"] {
+            display: none !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    # Redireciona para Login
+    st.switch_page("pages/0_🔐_Login.py")
+    st.stop()
+
+# ============================================================
+# SIDEBAR (só aparece quando logado)
+# ============================================================
 with st.sidebar:
     st.title(f"{APP_ICON} Estudos GMBC")
     st.caption("Guarda Municipal de Balneário Camboriú")
 
     user = st.session_state.get("user")
-    if user:
-        st.success(f"👤 {getattr(user, 'email', 'usuário')}")
-        if st.button("🚪 Sair", use_container_width=True):
-            from core.auth import logout
-            logout()
-            st.session_state.user = None
-            st.rerun()
-    else:
-        st.info("Faça login para começar.")
+    st.success(f"👤 {getattr(user, 'email', 'usuário')}")
+
+    if st.button("🚪 Sair", use_container_width=True):
+        from core.auth import logout
+        logout()
+        st.session_state.user = None
+        st.rerun()
 
     st.divider()
     st.caption("Navegue pelo menu acima ☝️")
 
-if not st.session_state.get("user"):
-    st.switch_page("pages/0_🔐_Login.py")
-else:
-    st.switch_page("pages/1_🏠_Home.py")
+# ============================================================
+# REDIRECIONA PARA HOME (já logado)
+# ============================================================
+st.switch_page("pages/1_🏠_Home.py")
