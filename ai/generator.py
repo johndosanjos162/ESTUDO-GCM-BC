@@ -1,49 +1,12 @@
-"""Geração de questões via IA — com blocos de estudo."""
-
-from __future__ import annotations
-import hashlib
-import json
-
-from openai import OpenAI
-from config import OPENAI_API_KEY, OPENAI_MODEL, API_BASE_URL
-from ai.prompts import SYSTEM_PROMPT, BLOCOS
-from core.database import salvar_questao, questao_ja_existe
-
-_client: OpenAI | None = None
-
-
-def _get_client() -> OpenAI:
-    """Cliente compatível com Groq (padrão) ou OpenAI."""
-    global _client
-    if _client is None:
-        if not OPENAI_API_KEY:
-            raise RuntimeError(
-                "Chave de API ausente. Configure GROQ_API_KEY (ou OPENAI_API_KEY) "
-                "nos Secrets do Streamlit Cloud."
-            )
-        _client = OpenAI(
-            api_key=OPENAI_API_KEY,
-            base_url=API_BASE_URL,
-        )
-    return _client
-
-
-def _hash(texto: str) -> str:
-    return hashlib.sha256(texto.strip().encode("utf-8")).hexdigest()
-
-
-def listar_blocos() -> dict:
-    """Retorna todos os blocos disponíveis."""
-    return BLOCOS
-
-
 def gerar_questoes(
     bloco: str,
     quantidade: int = 5,
     dificuldade: str = "medio",
     salvar: bool = True,
 ) -> list[dict]:
-    """Gera questões para um bloco específico."""
+    """
+    Gera questões para um bloco específico com foco EXCLUSIVO na GMBC.
+    """
     info = BLOCOS.get(bloco)
     if not info:
         raise ValueError(f"Bloco inválido: {bloco}")
@@ -51,6 +14,20 @@ def gerar_questoes(
     user_prompt = info["prompt"].format(
         n=quantidade, dificuldade=dificuldade
     )
+
+    # ⚠️ REFORÇO OBRIGATÓRIO DO FOCO
+    user_prompt += """
+
+============================================================
+REFORÇO OBRIGATÓRIO DE FOCO:
+Todas as questões geradas devem ser EXCLUSIVAMENTE sobre o concurso
+da Guarda Municipal de Balneário Camboriú (SC).
+- NÃO gere questões genéricas de concursos de outras áreas.
+- NÃO gere questões sobre temas que não constam no edital da GMBC.
+- Contextualize SEMPRE com situações, leis e dados do município.
+- Se a questão for de Português/Matemática, use exemplos da corporação.
+============================================================
+"""
 
     try:
         response = _get_client().chat.completions.create(
@@ -66,16 +43,12 @@ def gerar_questoes(
         msg = str(e)
         if "429" in msg or "insufficient_quota" in msg:
             raise RuntimeError(
-                "Sem créditos ou limite atingido. Aguarde ou troque a chave."
+                "Sem créditos na API. Adicione fundos ou troque o modelo."
             ) from e
         if "404" in msg or "model_not_found" in msg:
             raise RuntimeError(
                 f"Modelo '{OPENAI_MODEL}' não encontrado. "
-                "Troque para 'llama-3.1-8b-instant' nos Secrets."
-            ) from e
-        if "401" in msg or "invalid_api_key" in msg:
-            raise RuntimeError(
-                "Chave de API inválida. Verifique os Secrets."
+                "Verifique os Secrets."
             ) from e
         raise
 
@@ -108,14 +81,3 @@ def gerar_questoes(
             resultado.append(payload)
 
     return resultado
-
-
-def gerar_lote(blocos: list, n_por_bloco: int = 5) -> list:
-    """Gera questões para múltiplos blocos."""
-    todas = []
-    for b in blocos:
-        try:
-            todas.extend(gerar_questoes(b, n_por_bloco))
-        except Exception as e:
-            print(f"[erro] Falha ao gerar questões de {b}: {e}")
-    return todas
