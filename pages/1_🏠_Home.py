@@ -1,7 +1,7 @@
 """Dashboard principal."""
 
 import streamlit as st
-from config import BLOCOS
+from config import DISCIPLINAS
 from core.cycle_manager import obter_ciclo_atual
 from core.database import estatisticas_por_disciplina, buscar_historico_usuario
 from utils.helpers import inicializar_session_state, calcular_percentual
@@ -22,21 +22,19 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader(f"📅 Ciclo ativo: Semana {'A' if ciclo['numero_ciclo'] == 1 else 'B'}")
-    for chave in ciclo["disciplinas"]:
-        nome = BLOCOS.get(chave, chave)
+    for nome in ciclo["nomes"]:
         st.markdown(f"- **{nome}**")
 
 with col2:
     st.metric("Próxima alternância", ciclo["proxima_alternancia"])
 
 st.divider()
-
-st.subheader("📊 Desempenho por bloco")
+st.subheader("📊 Desempenho por disciplina")
 stats = estatisticas_por_disciplina(user.id)
 
 if stats:
     for s in stats:
-        nome = BLOCOS.get(s["disciplina"], s["disciplina"])
+        nome = DISCIPLINAS.get(s["disciplina"], s["disciplina"])
         total = int(s.get("total", 0))
         acertos = int(s.get("acertos", 0))
         pct = calcular_percentual(acertos, total)
@@ -62,7 +60,7 @@ st.subheader("🕒 Últimas respostas")
 historico = buscar_historico_usuario(user.id, limite=5)
 if historico:
     for r in historico:
-        nome = BLOCOS.get(r["disciplina"], r["disciplina"])
+        nome = DISCIPLINAS.get(r["disciplina"], r["disciplina"])
         icone = "✅" if r.get("acertou") else "❌"
         st.write(f"{icone} **{nome}** — sua resposta: {r['resposta_usuario']} | correta: {r['resposta_correta']}")
 else:
