@@ -19,7 +19,7 @@ def _get(key: str, default: str = "") -> str:
 
 # ---------- IA (Groq - gratuito) ----------
 GROQ_API_KEY: str = _get("GROQ_API_KEY")
-GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_MODEL: str = _get("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 # Alias mantido para compatibilidade com o resto do código
 OPENAI_API_KEY: str = GROQ_API_KEY
