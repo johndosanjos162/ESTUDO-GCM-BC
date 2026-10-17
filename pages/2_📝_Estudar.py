@@ -37,7 +37,7 @@ blocos_disponiveis = listar_blocos()
 with st.sidebar:
     st.subheader("📚 Blocos de Estudo")
 
-    modo_livre = st.checkbox("Ver todos os blocos", value=False)
+    modo_livre = st.checkbox("Ver todos os blocos", value=True, disabled=True)
     opcoes = list(blocos_disponiveis.keys()) if modo_livre else ciclo["disciplinas"]
 
     bloco_escolhido = st.selectbox(
